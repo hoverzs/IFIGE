@@ -1,6 +1,10 @@
 node_modules/
 dist/
-uploads/
-data/
+/data/
+/uploads/
 *.log
 .DS_Store
+
+# seed/ — git-ben tárolt induló tartalom (Railway deploy)
+!seed/
+!seed/**

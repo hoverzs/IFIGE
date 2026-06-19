@@ -63,6 +63,14 @@ UPLOADS_DIR=/data/uploads
 
 5. Redeploy.
 
+**Első deploy után üres tartalom?** A repo `seed/` mappája automatikusan betölti a „Több van benned!” sorozatot. Ha már létrejött üres seed a Volume-on, egyszer állítsd be:
+
+```
+FORCE_SEED=true
+```
+
+Redeploy után vedd ki ezt a változót.
+
 Ezután a sorozatok, képek és videók megmaradnak újraindítás után is.
 
 ---

@@ -14,9 +14,64 @@ const DIST_DIR = path.join(ROOT, 'dist');
 const DATA_FILE = path.join(DATA_DIR, 'series.json');
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const SEED_DIR = path.join(ROOT, 'seed');
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+
+function copyDirContents(srcDir, destDir, { overwrite = false } = {}) {
+  if (!fs.existsSync(srcDir)) return;
+  fs.mkdirSync(destDir, { recursive: true });
+  for (const name of fs.readdirSync(srcDir)) {
+    const src = path.join(srcDir, name);
+    const dest = path.join(destDir, name);
+    if (fs.statSync(src).isDirectory()) {
+      copyDirContents(src, dest, { overwrite });
+      continue;
+    }
+    if (overwrite || !fs.existsSync(dest)) {
+      fs.copyFileSync(src, dest);
+    }
+  }
+}
+
+function isEmptySeedData(data) {
+  const series = data?.series?.[0];
+  if (!series) return true;
+  if (series.title === 'Amikor megtagadsz') return true;
+  return !series.episodes?.some((ep) => ep.image);
+}
+
+function bootstrapFromSeed() {
+  const seedDataDir = path.join(SEED_DIR, 'data');
+  const seedUploadsDir = path.join(SEED_DIR, 'uploads');
+  const seedSeriesFile = path.join(seedDataDir, 'series.json');
+  if (!fs.existsSync(seedSeriesFile)) return;
+
+  const force = process.env.FORCE_SEED === 'true';
+  let importData = !fs.existsSync(DATA_FILE);
+
+  if (!importData && (force || fs.existsSync(DATA_FILE))) {
+    try {
+      const existing = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
+      if (force || isEmptySeedData(existing)) importData = true;
+    } catch {
+      importData = true;
+    }
+  }
+
+  if (importData) {
+    copyDirContents(seedDataDir, DATA_DIR, { overwrite: true });
+    console.log('[IFIge] Seed sorozat betöltve →', DATA_DIR);
+  }
+
+  if (fs.existsSync(seedUploadsDir)) {
+    copyDirContents(seedUploadsDir, UPLOADS_DIR, { overwrite: force });
+    console.log('[IFIge] Seed média ellenőrizve →', UPLOADS_DIR);
+  }
+}
+
+bootstrapFromSeed();
 
 const storage = multer.diskStorage({
   destination: UPLOADS_DIR,
