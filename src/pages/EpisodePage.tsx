@@ -1,0 +1,119 @@
+import { useEffect, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { fetchSeries } from '../api';
+import type { Episode, Series } from '../api';
+import EpisodeMedia from '../components/EpisodeMedia';
+
+export default function EpisodePage() {
+  const { id, day } = useParams<{ id: string; day: string }>();
+  const [series, setSeries] = useState<Series | null>(null);
+  const [episode, setEpisode] = useState<Episode | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) return;
+    fetchSeries(id).then((s) => {
+      setSeries(s);
+      setEpisode(s.episodes.find((e) => e.day === parseInt(day || '1', 10)) || null);
+    }).catch(console.error).finally(() => setLoading(false));
+  }, [id, day]);
+
+  if (loading) return <Spinner />;
+
+  if (!series || !episode) {
+    return (
+      <div className="min-h-dvh flex flex-col items-center justify-center gap-4">
+        <p className="text-text-muted">Epizód nem található.</p>
+        <Link to="/" className="text-accent text-sm">Vissza</Link>
+      </div>
+    );
+  }
+
+  if (episode.status === 'locked') {
+    return (
+      <div className="min-h-dvh flex flex-col items-center justify-center gap-4 px-6 text-center">
+        <span className="text-xs font-bold uppercase tracking-widest text-text-muted">{episode.day}. epizód</span>
+        <h2 className="text-xl font-bold">{episode.title || 'Hamarosan'}</h2>
+        <p className="text-text-muted text-sm">Ez az epizód még nem nyílt meg.</p>
+        <Link to="/" className="text-accent text-sm">← Vissza</Link>
+      </div>
+    );
+  }
+
+  const dayNum = parseInt(day || '1', 10);
+  const prevDay = dayNum > 1 ? dayNum - 1 : null;
+  const nextEp = series.episodes.find((e) => e.day === dayNum + 1);
+  const nextDay = nextEp && nextEp.status !== 'locked' ? dayNum + 1 : null;
+
+  return (
+    <div className="min-h-dvh bg-bg pb-10">
+      <div className="sticky top-0 z-40 bg-bg/80 backdrop-blur border-b border-border px-5 py-3 flex items-center gap-3">
+        <Link to="/" className="text-text-muted hover:text-text">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
+        </Link>
+        <div className="min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-accent">{episode.day}. epizód</p>
+          <h1 className="font-bold truncate">{episode.title}</h1>
+        </div>
+      </div>
+
+      <div className="relative w-full aspect-[4/5] sm:aspect-[16/10] max-h-[65dvh] bg-black overflow-hidden">
+        <EpisodeMedia
+          episode={episode}
+          variant="slowPush"
+          containerClassName="absolute inset-0"
+          className="h-full"
+        />
+        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-bg to-transparent pointer-events-none" />
+      </div>
+
+      <article className="px-5 py-8 max-w-[680px] mx-auto space-y-8 animate-fade-in-up">
+        {episode.scripture && (
+          <section>
+            <Label>Ige</Label>
+            <p className="text-lg sm:text-xl font-medium text-accent leading-relaxed">{episode.scripture}</p>
+          </section>
+        )}
+        {episode.thought && (
+          <section>
+            <Label>Gondolat</Label>
+            <div className="text-[1.05rem] leading-[1.85] text-text/95 whitespace-pre-wrap">
+              {episode.thought}
+            </div>
+          </section>
+        )}
+        {episode.question && (
+          <section className="bg-bg-card rounded-2xl p-5 sm:p-6 border border-border">
+            <Label>Kérdés</Label>
+            <p className="text-[1.05rem] leading-[1.75] italic text-text/95">{episode.question}</p>
+          </section>
+        )}
+        {episode.prayer && (
+          <section className="bg-accent/10 rounded-2xl p-5 sm:p-6 border border-accent/20">
+            <Label>Ima</Label>
+            <p className="text-[1.05rem] leading-[1.75] whitespace-pre-wrap text-text/95">{episode.prayer}</p>
+          </section>
+        )}
+        {episode.teaser && (
+          <section className="border-l-2 border-accent/60 pl-5">
+            <Label>Holnap</Label>
+            <p className="text-text-muted italic leading-[1.75] whitespace-pre-wrap">{episode.teaser}</p>
+          </section>
+        )}
+
+        <nav className="flex justify-between pt-6 border-t border-border">
+          {prevDay ? <Link to={`/series/${series.id}/episode/${prevDay}`} className="text-sm text-text-muted hover:text-accent">← Előző</Link> : <span />}
+          {nextDay ? <Link to={`/series/${series.id}/episode/${nextDay}`} className="text-sm font-semibold text-accent">Következő →</Link> : <span />}
+        </nav>
+      </article>
+    </div>
+  );
+}
+
+function Label({ children }: { children: React.ReactNode }) {
+  return <h2 className="text-[11px] font-bold uppercase tracking-widest text-text-muted mb-3">{children}</h2>;
+}
+
+function Spinner() {
+  return <div className="min-h-dvh flex items-center justify-center"><div className="w-8 h-8 border-2 border-accent border-t-transparent rounded-full animate-spin" /></div>;
+}

@@ -1,0 +1,331 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #0a0a0a;
+  --color-bg-elevated: #141414;
+  --color-bg-card: #1a1a1a;
+  --color-accent: #e50914;
+  --color-accent-hover: #f40612;
+  --color-accent-muted: #b20710;
+  --color-text: #f5f5f5;
+  --color-text-muted: #a3a3a3;
+  --color-border: #2a2a2a;
+  --font-sans: "Outfit", system-ui, sans-serif;
+}
+
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--color-bg);
+  color: var(--color-text);
+  min-height: 100dvh;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100dvh;
+}
+
+.site-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  width: 100%;
+  flex-shrink: 0;
+  background: #050505;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.site-header__inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 56px;
+  padding: 0 1rem;
+}
+
+@media (min-width: 640px) {
+  .site-header__inner {
+    height: 64px;
+    padding: 0 1.5rem;
+  }
+}
+
+.app-logo {
+  display: inline-flex;
+  align-items: baseline;
+  font-size: 1.35rem;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+  line-height: 1;
+  text-decoration: none;
+  user-select: none;
+}
+
+.app-logo__if,
+.app-logo__ge {
+  color: #f5f5f5;
+}
+
+.app-logo__i {
+  color: var(--color-accent);
+  font-size: 1.15em;
+  line-height: 0.85;
+}
+
+.site-header__admin {
+  font-size: 0.6875rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.site-header__admin:hover {
+  color: var(--color-text);
+}
+
+::selection {
+  background: var(--color-accent);
+  color: white;
+}
+
+.gradient-hero {
+  background: linear-gradient(
+    to top,
+    var(--color-bg) 0%,
+    rgba(10, 10, 10, 0.85) 35%,
+    rgba(10, 10, 10, 0.4) 65%,
+    rgba(10, 10, 10, 0.2) 100%
+  );
+}
+
+.gradient-card {
+  background: linear-gradient(
+    to top,
+    rgba(10, 10, 10, 0.95) 0%,
+    rgba(10, 10, 10, 0.5) 50%,
+    transparent 100%
+  );
+}
+
+.glow-accent {
+  box-shadow: 0 0 40px rgba(229, 9, 20, 0.25);
+}
+
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes fade-in-up {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fade-in-up 0.5s ease-out forwards;
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(229, 9, 20, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 35px rgba(229, 9, 20, 0.5);
+  }
+}
+
+.pulse-current {
+  animation: pulse-glow 2.5s ease-in-out infinite;
+}
+
+.input {
+  width: 100%;
+  background: var(--color-bg);
+  border: 1px solid var(--color-border);
+  border-radius: 0.75rem;
+  padding: 0.75rem 1rem;
+  font-size: 0.875rem;
+  color: var(--color-text);
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.input:focus {
+  border-color: var(--color-accent);
+}
+
+.input::placeholder {
+  color: var(--color-text-muted);
+}
+
+select.input {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23a3a3a3' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  padding-right: 2.5rem;
+}
+
+/* —— Élő kép — prémium CSS mozgás —— */
+
+:root {
+  --live-drift-duration: 22s;
+  --live-push-duration: 20s;
+  --live-breathe-duration: 18s;
+  --live-glow-duration: 26s;
+}
+
+.live-image {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+  background: var(--color-bg-card);
+  isolation: isolate;
+}
+
+.live-image__img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  transform-origin: center center;
+  will-change: transform;
+  backface-visibility: hidden;
+}
+
+.live-image__img--static {
+  animation: none;
+}
+
+/* 1. Hero — lassú zoom + enyhe drift + lebegés */
+.live-image__img--cinematic-drift {
+  animation: cinematicDrift var(--live-drift-duration) ease-in-out infinite;
+}
+
+/* 2. Epizódoldal — lassú push előre */
+.live-image__img--slow-push {
+  animation: slowPush var(--live-push-duration) ease-in-out infinite alternate;
+}
+
+/* 3. Kártyák — finom lélegzés */
+.live-image__img--breathe {
+  animation: breathe var(--live-breathe-duration) ease-in-out infinite;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .live-image__img--breathe {
+    animation: none;
+    transform: scale(1);
+  }
+
+  .group:hover .live-image__img--breathe {
+    animation: breathe var(--live-breathe-duration) ease-in-out infinite;
+  }
+}
+
+/* Finom fényfolt — nem takarja a szöveget (a réteg a kép felett, alatta maradnak overlay-k) */
+.live-image__atmosphere {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 75% 55% at 35% 38%,
+    rgba(255, 248, 240, 0.11) 0%,
+    rgba(255, 255, 255, 0.03) 42%,
+    transparent 72%
+  );
+  animation: liveImageGlow var(--live-glow-duration) ease-in-out infinite alternate;
+  mix-blend-mode: soft-light;
+}
+
+.live-image--debug .live-image__img--cinematic-drift,
+.live-image--debug .live-image__img--slow-push,
+.live-image--debug .live-image__img--breathe,
+.live-image--debug .group:hover .live-image__img--breathe {
+  animation-duration: 4s;
+}
+
+.live-image--debug .live-image__atmosphere {
+  animation-duration: 5s;
+}
+
+@keyframes cinematicDrift {
+  0% {
+    transform: scale(1.04) translate3d(-1.5%, 0, 0);
+  }
+  50% {
+    transform: scale(1.1) translate3d(1.5%, -0.8%, 0);
+  }
+  100% {
+    transform: scale(1.04) translate3d(-1.5%, 0, 0);
+  }
+}
+
+@keyframes slowPush {
+  0% {
+    transform: scale(1.02) translate3d(0, 0, 0);
+  }
+  100% {
+    transform: scale(1.12) translate3d(0, -1%, 0);
+  }
+}
+
+@keyframes breathe {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes liveImageGlow {
+  0% {
+    opacity: 0.22;
+    transform: translate3d(-2%, -1%, 0);
+  }
+  50% {
+    opacity: 0.42;
+    transform: translate3d(2.5%, 1.2%, 0);
+  }
+  100% {
+    opacity: 0.28;
+    transform: translate3d(-1%, 0.5%, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .live-image__img,
+  .live-image__atmosphere {
+    animation: none !important;
+  }
+
+  .live-image__atmosphere {
+    opacity: 0.15;
+  }
+}
