@@ -8,10 +8,12 @@ import { v4 as uuidv4 } from 'uuid';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT = path.join(__dirname, '..');
-const DATA_DIR = path.join(ROOT, 'data');
-const UPLOADS_DIR = path.join(ROOT, 'uploads');
+const DATA_DIR = process.env.DATA_DIR || path.join(ROOT, 'data');
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(ROOT, 'uploads');
+const DIST_DIR = path.join(ROOT, 'dist');
 const DATA_FILE = path.join(DATA_DIR, 'series.json');
 const CONFIG_FILE = path.join(DATA_DIR, 'config.json');
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 fs.mkdirSync(DATA_DIR, { recursive: true });
 fs.mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -130,7 +132,7 @@ function createSeedData() {
 
 function deleteFile(filePath) {
   if (!filePath?.startsWith('/uploads/')) return;
-  const full = path.join(ROOT, filePath.replace(/^\//, ''));
+  const full = path.join(UPLOADS_DIR, path.basename(filePath));
   if (fs.existsSync(full)) fs.unlinkSync(full);
 }
 
@@ -480,10 +482,32 @@ app.delete('/api/series/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+if (IS_PRODUCTION) {
+  if (fs.existsSync(DIST_DIR)) {
+    app.use(express.static(DIST_DIR));
+    app.get('*', (req, res, next) => {
+      if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
+        return next();
+      }
+      res.sendFile(path.join(DIST_DIR, 'index.html'), (err) => {
+        if (err) next(err);
+      });
+    });
+  } else {
+    console.warn('[IFIge] dist/ hiányzik — futtasd: npm run build');
+  }
+}
+
 app.use((err, _req, res, _next) => {
   console.error(err);
   res.status(500).json({ error: err.message || 'Belső szerverhiba' });
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`IFIge API: http://localhost:${PORT}`));
+const HOST = process.env.HOST || '0.0.0.0';
+
+app.listen(PORT, HOST, () => {
+  console.log(`IFIge ${IS_PRODUCTION ? 'production' : 'development'}: http://${HOST}:${PORT}`);
+  console.log(`  data:    ${DATA_DIR}`);
+  console.log(`  uploads: ${UPLOADS_DIR}`);
+});

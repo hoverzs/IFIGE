@@ -28,4 +28,10 @@ A sorozat teljes egészében feltölthető előre. A kezdő dátumtól számítv
 
 - React + TypeScript + Vite
 - Tailwind CSS v4
-- Express API + JSON tárolás + képfeltöltés
+- Express API (JSON fájl + fájlfeltöltés)
+
+## Élesítés (Railway)
+
+Teljes app egy Railway szolgáltatáson: build + Express + API + feltöltések.
+
+Részletes lépések: **[RAILWAY.md](./RAILWAY.md)**
