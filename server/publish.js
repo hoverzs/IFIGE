@@ -71,6 +71,38 @@ export function getRecapPublishInfo(startDate) {
   };
 }
 
+/** 0 = vasárnap, 1 = hétfő, … 6 = szombat (naptár nap, UTC-dátum alapján) */
+export function getWeekdayIndex(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d, 12, 0, 0)).getUTCDay();
+}
+
+export function isMondayStartDate(dateStr) {
+  return getWeekdayIndex(dateStr) === 1;
+}
+
+export function getWeekdayNameForDate(dateStr) {
+  const names = ['Vasárnap', 'Hétfő', 'Kedd', 'Szerda', 'Csütörtök', 'Péntek', 'Szombat'];
+  return names[getWeekdayIndex(dateStr)] || '';
+}
+
+export function validateStartDate(dateStr) {
+  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    return { ok: false, isMonday: false, weekday: '', message: 'Érvénytelen dátumformátum (YYYY-MM-DD).' };
+  }
+  const weekday = getWeekdayNameForDate(dateStr);
+  const isMonday = isMondayStartDate(dateStr);
+  if (!isMonday) {
+    return {
+      ok: false,
+      isMonday: false,
+      weekday,
+      message: `A startDate hétfői dátum legyen (${dateStr} = ${weekday}).`,
+    };
+  }
+  return { ok: true, isMonday: true, weekday, message: '' };
+}
+
 export function getEpisodeContentStatus(ep) {
   const hasAny =
     CORE_EPISODE_FIELDS.some((f) => ep[f]?.trim()) || !!ep.image;
@@ -283,8 +315,12 @@ function sanitizeRecapForPublic(enriched) {
 export function enrichForAdmin(series, opts = {}) {
   const enriched = enrichSeries(series, opts);
   const recapInfo = getRecapPublishInfo(enriched.startDate);
+  const startDateValidation = validateStartDate(enriched.startDate);
   return {
     ...enriched,
+    startDateIsMonday: startDateValidation.isMonday,
+    startDateWeekday: startDateValidation.weekday,
+    startDateWarning: startDateValidation.ok ? '' : startDateValidation.message,
     recapContentStatus: getRecapContentStatus(enriched.weeklyRecap),
     recapAdminStatus: getAdminRecapStatus(
       enriched.status,

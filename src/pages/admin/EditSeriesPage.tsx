@@ -307,7 +307,15 @@ export default function EditSeriesPage() {
               )}
 
               {releaseMode === 'daily' && startDate && (
-                <p className="text-xs text-text-muted mt-1.5">Heti finálé: {startDate} + 6 nap, vasárnap 16:00 (Europe/Bucharest).</p>
+                <p className="text-xs text-text-muted mt-1.5">
+                  Heti finálé: {startDate} + 6 nap, vasárnap 16:00 (Europe/Bucharest = romániai helyi idő).
+                </p>
+              )}
+
+              {releaseMode === 'daily' && startDate && series?.startDateIsMonday === false && (
+                <p className="text-xs text-accent mt-1.5">
+                  {series.startDateWarning || `Figyelem: ${startDate} nem hétfő (${series.startDateWeekday}).`}
+                </p>
               )}
 
             </Field>

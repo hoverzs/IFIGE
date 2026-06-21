@@ -84,8 +84,19 @@ Ezután a sorozatok, képek és videók megmaradnak újraindítás után is.
 | `DATA_DIR` | `./data` | Sorozat JSON mappa |
 | `UPLOADS_DIR` | `./uploads` | Feltöltött fájlok |
 | `HOST` | `0.0.0.0` | Bind cím |
+| `PUBLISH_TEST_NOW` | — | **Csak lokális fejlesztés.** Szimulált időpont. **Ne állítsd be Railway-en** — production módban figyelmen kívül marad, de feleslegesen ott ne legyen. |
 
 Példa fájl: `.env.example`
+
+### Publikálási időzóna
+
+- **Europe/Bucharest** = romániai helyi idő
+- Heti finálé: vasárnap 16:00 ebben az időzónában
+- `startDate` mindig **hétfő** legyen
+
+Példa: `startDate: 2026-06-22` (hétfő) → finálé: `2026-06-28 16:00` (vasárnap)
+
+Dátumtesztek: `npm run test:publish`
 
 ---
 

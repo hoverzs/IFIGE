@@ -57,6 +57,9 @@ export interface Series {
   recapContentStatus?: EpisodeContentStatus;
   recapAdminStatus?: EpisodeAdminStatus | 'available';
   dayIndex?: number;
+  startDateIsMonday?: boolean;
+  startDateWeekday?: string;
+  startDateWarning?: string;
   isComplete?: boolean;
   showAllEpisodes?: boolean;
 }
@@ -122,6 +125,9 @@ export function normalizeSeries(raw: Partial<Series> & { id: string }): Series {
     recapContentStatus: raw.recapContentStatus,
     recapAdminStatus: raw.recapAdminStatus,
     dayIndex: raw.dayIndex,
+    startDateIsMonday: raw.startDateIsMonday,
+    startDateWeekday: raw.startDateWeekday,
+    startDateWarning: raw.startDateWarning,
     isComplete: raw.isComplete,
     showAllEpisodes: raw.showAllEpisodes,
   };

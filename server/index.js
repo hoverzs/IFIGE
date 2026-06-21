@@ -132,8 +132,13 @@ function enrichOpts() {
     showAllEpisodes: !!readConfig().showAllEpisodes,
     resolveHeroImage,
   };
-  if (!IS_PRODUCTION && process.env.PUBLISH_TEST_NOW) {
-    opts.now = new Date(process.env.PUBLISH_TEST_NOW);
+  if (process.env.PUBLISH_TEST_NOW) {
+    if (IS_PRODUCTION) {
+      console.warn('[IFIge] PUBLISH_TEST_NOW be van állítva, de production módban FIGYELMEN KÍVÜL HAGYJUK — ne használd Railway-en.');
+    } else {
+      opts.now = new Date(process.env.PUBLISH_TEST_NOW);
+      console.log('[IFIge] Dev teszt idő:', process.env.PUBLISH_TEST_NOW);
+    }
   }
   return opts;
 }

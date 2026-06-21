@@ -78,7 +78,9 @@ export default function NewSeriesPage() {
             <p className="text-xs text-accent mt-1.5">A napi publikálás csak hétfői kezdődátummal működik.</p>
           )}
           {releaseMode === 'daily' && startDate && (
-            <p className="text-xs text-text-muted mt-1.5">Az 1. rész ezen a napon nyílik meg; a heti finálé vasárnap 16:00-kor (Europe/Bucharest).</p>
+            <p className="text-xs text-text-muted mt-1.5">
+              Az 1. rész ezen a napon nyílik meg; a heti finálé vasárnap 16:00-kor (Europe/Bucharest = romániai helyi idő).
+            </p>
           )}
         </Field>
         <Field label="Megjelenés">

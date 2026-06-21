@@ -12,6 +12,7 @@
     "dev:server": "node server/index.js",
     "build": "vite build",
     "start": "node server/index.js",
+    "test:publish": "node server/publish.test.js",
     "preview": "vite preview"
   },
   "dependencies": {
