@@ -338,11 +338,11 @@ export default function EditSeriesPage() {
 
             <select className="input" value={status} onChange={(e) => setStatus(e.target.value as Series['status'])}>
 
-              <option value="draft">Vázlat</option>
+              <option value="draft">Vázlat (még nem ütemezett)</option>
 
-              <option value="active">Aktív</option>
+              <option value="active">Ütemezve (automatikus publikálás)</option>
 
-              <option value="archived">Archív</option>
+              <option value="archived">Archív (rejtett)</option>
 
             </select>
 

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { fetchCurrent } from '../api';
-import type { Series } from '../api';
+import { fetchCurrent, EMPTY_SERIES_MESSAGE } from '../api';
+import type { CurrentResponse, Series } from '../api';
 import Button from '../components/Button';
 import Header from '../components/Header';
 import BottomNav from '../components/BottomNav';
@@ -22,11 +22,11 @@ function getEpisodeProgress(series: Series) {
 }
 
 export default function HomePage() {
-  const [series, setSeries] = useState<Series | null>(null);
+  const [current, setCurrent] = useState<CurrentResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchCurrent().then(setSeries).catch(console.error).finally(() => setLoading(false));
+    fetchCurrent().then(setCurrent).catch(console.error).finally(() => setLoading(false));
   }, []);
 
   if (loading) {
@@ -37,31 +37,42 @@ export default function HomePage() {
     );
   }
 
-  if (!series) {
+  if (!current?.series || current.phase === 'empty') {
     return (
       <div className="min-h-dvh pb-24 bg-bg">
         <Header />
         <div className="flex flex-col items-center justify-center min-h-[50dvh] px-6 text-center">
-          <p className="text-text-muted mb-4">Jelenleg nincs aktív sorozat.</p>
-          <Button to="/admin">Admin felület</Button>
+          <p className="text-text-muted text-base max-w-sm leading-relaxed">
+            {current?.message || EMPTY_SERIES_MESSAGE}
+          </p>
         </div>
         <BottomNav />
       </div>
     );
   }
 
+  const series = current.series;
+  const isUpcoming = current.phase === 'upcoming';
   const featuredEpisode = getFeaturedEpisode(series);
   const heroImage = series.episodes[0]?.image || series.coverImage || series.heroImage;
   const unlockedCount = series.episodes.filter((e) => e.status !== 'locked').length;
-  const statusLabel = series.showAllEpisodes
-    ? 'Teszt mód · mind a 7 epizód elérhető'
-    : series.releaseMode === 'all'
-      ? `${unlockedCount}/${series.totalDays} · Minden epizód elérhető`
-      : `${series.currentDay}/${series.totalDays} · Heti sorozat`;
+  const statusLabel = isUpcoming
+    ? `Következő sorozat · ${series.startDate}`
+    : series.showAllEpisodes
+      ? 'Teszt mód · mind a 7 epizód elérhető'
+      : series.releaseMode === 'all'
+        ? `${unlockedCount}/${series.totalDays} · Minden epizód elérhető`
+        : `${series.currentDay}/${series.totalDays} · Heti sorozat`;
 
   return (
     <div className="min-h-dvh pb-24 bg-bg">
       <Header />
+
+      {isUpcoming && (
+        <div className="mx-5 mt-6 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm text-text/90">
+          Ez a sorozat <strong>{series.startDate}</strong>-án indul. Az epizódok addig zároltak maradnak.
+        </div>
+      )}
 
       <section className="relative mx-auto mt-8 w-[88%] max-w-[1500px] sm:w-[90%]">
         <div className="relative h-[clamp(280px,52vw,540px)] rounded-3xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.65)] ring-1 ring-white/[0.06]">
@@ -81,14 +92,14 @@ export default function HomePage() {
                 {series.biblicalBasis || series.description}
               </p>
             )}
-            {featuredEpisode && (
+            {!isUpcoming && featuredEpisode && (
               <p className="text-white/90 text-sm sm:text-base font-medium mb-5">
                 {featuredEpisode.status === 'current' ? 'Mai epizód: ' : 'Kezdd itt: '}
                 <span className="text-accent">{featuredEpisode.title}</span>
               </p>
             )}
 
-            {featuredEpisode && featuredEpisode.status !== 'locked' && (
+            {!isUpcoming && featuredEpisode && featuredEpisode.status !== 'locked' && (
               <Button
                 to={`/series/${series.id}/episode/${featuredEpisode.day}`}
                 className="w-full sm:w-auto max-w-[280px]"
@@ -115,7 +126,7 @@ export default function HomePage() {
       <section className="mt-10 sm:mt-12">
         <div className="px-5 mb-3">
           <h2 className="text-base font-bold">Epizódok</h2>
-          <p className="text-xs text-text-muted">7 napi epizód</p>
+          <p className="text-xs text-text-muted">{isUpcoming ? '7 napi epizód — hamarosan' : '7 napi epizód'}</p>
         </div>
 
         <div className="flex gap-3 overflow-x-auto scrollbar-hide px-5 pb-2 snap-x">
@@ -126,17 +137,19 @@ export default function HomePage() {
           ))}
         </div>
 
-        <div className="px-5 mt-3">
-          <div className="h-1 bg-bg-card rounded-full overflow-hidden">
-            <div
-              className="h-full bg-accent rounded-full transition-all"
-              style={{ width: `${getEpisodeProgress(series)}%` }}
-            />
+        {!isUpcoming && (
+          <div className="px-5 mt-3">
+            <div className="h-1 bg-bg-card rounded-full overflow-hidden">
+              <div
+                className="h-full bg-accent rounded-full transition-all"
+                style={{ width: `${getEpisodeProgress(series)}%` }}
+              />
+            </div>
           </div>
-        </div>
+        )}
       </section>
 
-      <WeeklyFinaleSection series={series} />
+      {!isUpcoming && <WeeklyFinaleSection series={series} />}
 
       <BottomNav />
     </div>

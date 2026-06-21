@@ -7,6 +7,7 @@ import {
   mediaUrl,
   placeholderCover,
   SERIES_STATUS_LABELS,
+  SCHEDULE_PHASE_LABELS,
 } from '../../api';
 import type { Series } from '../../api';
 import Button from '../../components/Button';
@@ -55,7 +56,7 @@ export default function AdminPage() {
 
       <main className="px-5 py-6 max-w-2xl mx-auto">
         <p className="text-text-muted text-sm mb-6">
-          Heti sorozatok kézi feltöltése és szerkesztése.
+          Több heti sorozat is feltölthető előre. Az „Ütemezve” státuszú sorozatok a startDate alapján automatikusan jelennek meg.
         </p>
 
         {loading ? (
@@ -109,6 +110,9 @@ function SeriesRow({
           </div>
           <p className="text-xs text-text-muted">
             {doneCount}/7 epizód kész · {series.startDate}
+            {series.schedulePhase && series.status === 'active' && (
+              <> · {SCHEDULE_PHASE_LABELS[series.schedulePhase]}</>
+            )}
           </p>
         </div>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-text-muted flex-shrink-0">

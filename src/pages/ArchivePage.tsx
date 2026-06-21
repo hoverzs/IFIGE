@@ -12,9 +12,11 @@ export default function ArchivePage() {
 
   useEffect(() => {
     Promise.all([fetchPastSeries(), fetchCurrent()])
-      .then(([pastSeries, currentSeries]) => {
-        setPast(pastSeries);
-        setCurrent(currentSeries);
+      .then(([pastSeries, currentResponse]) => {
+        const visibleId = currentResponse.series?.id;
+        const filtered = pastSeries.filter((p) => p.id !== visibleId);
+        setPast(filtered);
+        setCurrent(currentResponse.series);
       })
       .catch(console.error)
       .finally(() => setLoading(false));

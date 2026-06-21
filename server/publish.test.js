@@ -10,6 +10,9 @@ import {
   isMondayStartDate,
   getWeekdayNameForDate,
   validateStartDate,
+  resolveCurrentDisplay,
+  findCurrentWeekSeries,
+  findUpcomingSeries,
 } from './publish.js';
 
 const START = '2026-06-22';
@@ -101,3 +104,42 @@ assert(r.recap === 'available', 'enrichSeries recap 16:00-kor available');
 
 console.log('✓ publish.test.js — minden dátumteszt sikeres');
 console.log(`  startDate ${START} (${getWeekdayNameForDate(START)}) → finálé ${recap.publishDate} 16:00 ${recap.timezone}`);
+
+// --- Több sorozat ütemezése ---
+
+const week1 = {
+  id: 'w1',
+  startDate: '2026-06-22',
+  status: 'active',
+  releaseMode: 'daily',
+  title: 'Hét 1',
+  episodes: baseSeries.episodes,
+  weeklyRecap: baseSeries.weeklyRecap,
+};
+const week2 = {
+  ...week1,
+  id: 'w2',
+  startDate: '2026-06-29',
+  title: 'Hét 2',
+};
+const list = [week1, week2];
+
+assert(findCurrentWeekSeries(list, mk('2026-06-24'))?.id === 'w1', 'aktuális hét: w1');
+assert(findUpcomingSeries(list, mk('2026-06-24'))?.id === 'w2', 'következő hét előnézet: w2');
+
+const gap = resolveCurrentDisplay(list, { now: mk('2026-06-29') });
+assert(gap.phase === 'current' && gap.series.title === 'Hét 2', 'w2 indul hétfőn');
+
+const sundayW1 = resolveCurrentDisplay(list, { now: mk('2026-06-28', 10) });
+assert(sundayW1.phase === 'current' && sundayW1.series.title === 'Hét 1', 'w1 vasárnap még aktuális');
+
+const beforeW1 = resolveCurrentDisplay(list, { now: mk('2026-06-21') });
+assert(beforeW1.phase === 'upcoming' && beforeW1.series.title === 'Hét 1', 'w1 előnézet a hét előtt');
+
+const afterW1Only = resolveCurrentDisplay([week1], { now: mk('2026-07-07') });
+assert(afterW1Only.phase === 'empty', 'lezárt hét után üzenet, ha nincs következő');
+
+const empty = resolveCurrentDisplay([], { now: mk('2026-06-24') });
+assert(empty.phase === 'empty' && empty.message.includes('hamarosan'), 'üres állapot üzenet');
+
+console.log('✓ több sorozat ütemezési teszt sikeres');

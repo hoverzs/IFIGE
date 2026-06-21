@@ -1,4 +1,6 @@
-export type EpisodePublishStatus = 'available' | 'current' | 'locked';
+export type DisplayPhase = 'current' | 'upcoming';
+export type SchedulePhase = 'draft' | 'archived' | 'upcoming' | 'current' | 'past' | 'always';
+export type CurrentPhase = 'current' | 'upcoming' | 'empty';
 export type EpisodeContentStatus = 'missing' | 'incomplete' | 'complete';
 export type EpisodeAdminStatus = 'draft' | 'locked' | 'current' | 'available' | 'incomplete' | 'missing';
 export type EpisodeEditStatus = 'empty' | 'in_progress' | 'complete';
@@ -60,6 +62,8 @@ export interface Series {
   startDateIsMonday?: boolean;
   startDateWeekday?: string;
   startDateWarning?: string;
+  schedulePhase?: SchedulePhase;
+  displayPhase?: DisplayPhase;
   isComplete?: boolean;
   showAllEpisodes?: boolean;
 }
@@ -128,6 +132,8 @@ export function normalizeSeries(raw: Partial<Series> & { id: string }): Series {
     startDateIsMonday: raw.startDateIsMonday,
     startDateWeekday: raw.startDateWeekday,
     startDateWarning: raw.startDateWarning,
+    schedulePhase: raw.schedulePhase,
+    displayPhase: raw.displayPhase,
     isComplete: raw.isComplete,
     showAllEpisodes: raw.showAllEpisodes,
   };
@@ -185,9 +191,26 @@ export const EDIT_STATUS_LABELS: Record<EpisodeEditStatus, string> = {
 
 export const SERIES_STATUS_LABELS: Record<SeriesStatus, string> = {
   draft: 'Vázlat',
-  active: 'Aktív',
+  active: 'Ütemezve',
   archived: 'Archív',
 };
+
+export const SCHEDULE_PHASE_LABELS: Record<SchedulePhase, string> = {
+  draft: 'Vázlat',
+  archived: 'Archív',
+  upcoming: 'Következő hét',
+  current: 'Aktuális hét',
+  past: 'Lezárult',
+  always: 'Nyitó sorozat',
+};
+
+export interface CurrentResponse {
+  phase: CurrentPhase;
+  series: Series | null;
+  message?: string;
+}
+
+export const EMPTY_SERIES_MESSAGE = 'A következő sorozat hamarosan érkezik.';
 
 export const RELEASE_MODE_LABELS: Record<ReleaseMode, string> = {
   all: 'Mind azonnal elérhető',
@@ -218,12 +241,22 @@ async function readApiError(res: Response): Promise<string> {
   }
 }
 
-export async function fetchCurrent(): Promise<Series | null> {
+export async function fetchCurrent(): Promise<CurrentResponse> {
   const res = await fetch('/api/current');
   if (!res.ok) throw new Error('Hiba a betöltés során');
   const data = await res.json();
-  if (!data) return null;
-  return normalizeSeries(data);
+  if (!data || data.phase === 'empty') {
+    return {
+      phase: 'empty',
+      series: null,
+      message: data?.message || EMPTY_SERIES_MESSAGE,
+    };
+  }
+  return {
+    phase: data.phase,
+    series: data.series ? normalizeSeries(data.series) : null,
+    message: data.message || undefined,
+  };
 }
 
 export async function fetchSeries(id: string): Promise<Series> {

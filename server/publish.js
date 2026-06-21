@@ -103,6 +103,83 @@ export function validateStartDate(dateStr) {
   return { ok: true, isMonday: true, weekday, message: '' };
 }
 
+/** draft | archived | upcoming | current | past | always (releaseMode: all) */
+export function getSchedulePhase(series, now = new Date()) {
+  if (series.status === 'draft') return 'draft';
+  if (series.status === 'archived') return 'archived';
+  if (series.releaseMode === 'all') return 'always';
+  const dayIndex = getDayIndex(series.startDate, now);
+  if (dayIndex < 1) return 'upcoming';
+  if (dayIndex <= 7) return 'current';
+  return 'past';
+}
+
+export function findCurrentWeekSeries(seriesList, now = new Date()) {
+  return (
+    seriesList
+      .filter((s) => s.status === 'active' && s.releaseMode === 'daily')
+      .map((s) => ({ series: s, dayIndex: getDayIndex(s.startDate, now) }))
+      .filter(({ dayIndex }) => dayIndex >= 1 && dayIndex <= 7)
+      .sort((a, b) => b.series.startDate.localeCompare(a.series.startDate))[0]?.series ?? null
+  );
+}
+
+export function findUpcomingSeries(seriesList, now = new Date()) {
+  return (
+    seriesList
+      .filter((s) => s.status === 'active' && s.releaseMode === 'daily')
+      .map((s) => ({ series: s, dayIndex: getDayIndex(s.startDate, now) }))
+      .filter(({ dayIndex }) => dayIndex < 1)
+      .sort((a, b) => a.series.startDate.localeCompare(b.series.startDate))[0]?.series ?? null
+  );
+}
+
+export function findFallbackAllSeries(seriesList) {
+  return seriesList.find((s) => s.status === 'active' && s.releaseMode === 'all') ?? null;
+}
+
+export function getPastSeriesCandidates(seriesList, now = new Date()) {
+  return seriesList.filter((s) => {
+    if (s.status === 'archived') return true;
+    if (s.status !== 'active') return false;
+    if (s.releaseMode === 'all') return true;
+    return getDayIndex(s.startDate, now) > 7;
+  });
+}
+
+const EMPTY_MESSAGE = 'A következő sorozat hamarosan érkezik.';
+
+/**
+ * Melyik sorozat jelenjen meg a főoldalon — dátum alapján, nem manuális „egyetlen active” logika.
+ * @param {object[]} seriesList — nyers sorozatlista (migrateSeries előtt is működik)
+ */
+export function resolveCurrentDisplay(seriesList, opts = {}) {
+  const now = opts.now || new Date();
+  const enrichOne = (series, displayPhase) => {
+    const enriched = enrichSeries(series, opts);
+    enriched.schedulePhase = getSchedulePhase(series, now);
+    enriched.displayPhase = displayPhase;
+    return sanitizeForPublic(enriched);
+  };
+
+  const current = findCurrentWeekSeries(seriesList, now);
+  if (current) {
+    return { phase: 'current', series: enrichOne(current, 'current'), message: '' };
+  }
+
+  const upcoming = findUpcomingSeries(seriesList, now);
+  if (upcoming) {
+    return { phase: 'upcoming', series: enrichOne(upcoming, 'upcoming'), message: '' };
+  }
+
+  const fallback = findFallbackAllSeries(seriesList);
+  if (fallback) {
+    return { phase: 'current', series: enrichOne(fallback, 'current'), message: '' };
+  }
+
+  return { phase: 'empty', series: null, message: EMPTY_MESSAGE };
+}
+
 export function getEpisodeContentStatus(ep) {
   const hasAny =
     CORE_EPISODE_FIELDS.some((f) => ep[f]?.trim()) || !!ep.image;
@@ -161,6 +238,7 @@ export function enrichSeries(series, opts = {}) {
       currentDay: 0,
       totalDays: 7,
       dayIndex,
+      schedulePhase: getSchedulePhase(s, now),
       episodes: s.episodes.map((ep) => ({
         ...ep,
         status: 'locked',
@@ -186,6 +264,7 @@ export function enrichSeries(series, opts = {}) {
       currentDay: 7,
       totalDays: 7,
       dayIndex,
+      schedulePhase: getSchedulePhase(s, now),
       episodes: s.episodes.map((ep) => ({
         ...ep,
         status: 'available',
@@ -202,6 +281,7 @@ export function enrichSeries(series, opts = {}) {
 
   // daily — hétfőtől vasárnapig
   const currentDay = dayIndex < 1 ? 0 : Math.min(dayIndex, 7);
+  const schedulePhase = getSchedulePhase(s, now);
 
   return {
     ...s,
@@ -209,6 +289,7 @@ export function enrichSeries(series, opts = {}) {
     currentDay,
     totalDays: 7,
     dayIndex,
+    schedulePhase,
     episodes: s.episodes.map((ep) => ({
       ...ep,
       status: computeEpisodeStatus(ep.day, dayIndex),

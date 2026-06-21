@@ -91,8 +91,8 @@ export default function NewSeriesPage() {
         </Field>
         <Field label="Státusz">
           <select className="input" value={status} onChange={(e) => setStatus(e.target.value as typeof status)}>
-            <option value="draft">Vázlat</option>
-            <option value="active">Aktív</option>
+            <option value="draft">Vázlat (még nem ütemezett)</option>
+            <option value="active">Ütemezve (automatikus publikálás)</option>
           </select>
         </Field>
         <MediaUpload label="Borítókép (opcionális)" currentUrl="" previewUrl={coverPreview}

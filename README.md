@@ -43,6 +43,14 @@ A sorozat teljes egészében feltölthető előre. A **`startDate` mindig a hét
 
 Automatikus teszt: `npm run test:publish`
 
+### Több sorozat előre feltöltése
+
+1. Adminban hozz létre sorozatokat **Vázlat** státusszal, töltsd fel a tartalmat.
+2. Minden sorozathoz állíts be **hétfői startDate**-et (pl. `2026-06-22`, `2026-06-29`, …).
+3. Ha kész, állítsd **Ütemezve** státuszra — egyszerre több is lehet ütemezve.
+4. Az app a mai dátum alapján választja ki az aktuális hetet; a jövőbeli sorozat előnézetben látszik (zárolt epizódokkal).
+5. A lezárult hetek az archívumban maradnak visszanézhetők.
+
 Fejlesztői idő-szimuláció (csak lokálisan, **ne Railway-en**): `PUBLISH_TEST_NOW` — lásd `.env.example`
 
 ## Tech stack

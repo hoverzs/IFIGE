@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { fetchCurrent } from '../api';
-import type { Series } from '../api';
+import { fetchCurrent, EMPTY_SERIES_MESSAGE } from '../api';
+import type { CurrentResponse, Series } from '../api';
 import EpisodeStripCard from '../components/EpisodeStripCard';
 import WeeklyFinaleSection from '../components/WeeklyFinaleSection';
 import Header from '../components/Header';
@@ -12,14 +12,11 @@ function getEpisodeProgress(series: Series) {
 }
 
 export default function EpisodesPage() {
-  const [series, setSeries] = useState<Series | null>(null);
+  const [current, setCurrent] = useState<CurrentResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchCurrent()
-      .then(setSeries)
-      .catch(console.error)
-      .finally(() => setLoading(false));
+    fetchCurrent().then(setCurrent).catch(console.error).finally(() => setLoading(false));
   }, []);
 
   if (loading) {
@@ -30,11 +27,16 @@ export default function EpisodesPage() {
     );
   }
 
-  if (!series) {
+  const series = current?.series;
+  const isUpcoming = current?.phase === 'upcoming';
+
+  if (!series || current?.phase === 'empty') {
     return (
       <div className="min-h-dvh pb-24 bg-bg">
         <Header />
-        <div className="px-5 pt-8 text-center text-text-muted">Nincs aktív sorozat.</div>
+        <div className="px-5 pt-8 text-center text-text-muted max-w-sm mx-auto leading-relaxed">
+          {current?.message || EMPTY_SERIES_MESSAGE}
+        </div>
         <BottomNav />
       </div>
     );
@@ -45,10 +47,18 @@ export default function EpisodesPage() {
       <Header />
 
       <main className="pt-6 px-5">
+        {isUpcoming && (
+          <p className="text-sm text-text-muted mb-4 rounded-xl border border-border bg-bg-card/50 px-4 py-3">
+            Következő sorozat — indul: <strong>{series.startDate}</strong>
+          </p>
+        )}
+
         <div className="mb-6 animate-fade-in-up">
           <h1 className="text-2xl font-extrabold mb-1">{series.title}</h1>
           <p className="text-text-muted text-sm">
-            {series.currentDay}. nap / {series.totalDays} epizód
+            {isUpcoming
+              ? 'Az epizódok a kezdő napon nyílnak meg.'
+              : `${series.currentDay}. nap / ${series.totalDays} epizód`}
           </p>
         </div>
 
@@ -60,15 +70,17 @@ export default function EpisodesPage() {
           ))}
         </div>
 
-        <div className="mt-4 h-1 bg-bg-card rounded-full overflow-hidden">
-          <div
-            className="h-full bg-accent rounded-full transition-all"
-            style={{ width: `${getEpisodeProgress(series)}%` }}
-          />
-        </div>
+        {!isUpcoming && (
+          <div className="mt-4 h-1 bg-bg-card rounded-full overflow-hidden">
+            <div
+              className="h-full bg-accent rounded-full transition-all"
+              style={{ width: `${getEpisodeProgress(series)}%` }}
+            />
+          </div>
+        )}
       </main>
 
-      <WeeklyFinaleSection series={series} />
+      {!isUpcoming && <WeeklyFinaleSection series={series} />}
 
       <BottomNav />
     </div>

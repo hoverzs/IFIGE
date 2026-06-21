@@ -10,6 +10,10 @@ import {
   enrichForAdmin,
   getDayIndex,
   getNextMonday,
+  validateStartDate,
+  resolveCurrentDisplay,
+  getPastSeriesCandidates,
+  getSchedulePhase,
 } from './publish.js';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -207,16 +211,16 @@ function createSeedData() {
   };
 }
 
+function assertMondayStartDate(startDate, releaseMode) {
+  if (releaseMode === 'all') return null;
+  const validation = validateStartDate(startDate);
+  return validation.ok ? null : validation.message;
+}
+
 function deleteFile(filePath) {
   if (!filePath?.startsWith('/uploads/')) return;
   const full = path.join(UPLOADS_DIR, path.basename(filePath));
   if (fs.existsSync(full)) fs.unlinkSync(full);
-}
-
-function getActiveSeries(data) {
-  const active = data.series.filter((s) => s.status === 'active');
-  if (!active.length) return null;
-  return active.sort((a, b) => new Date(b.startDate) - new Date(a.startDate))[0];
 }
 
 function migrateSeries(series) {
@@ -254,12 +258,6 @@ function migrateSeries(series) {
   }
   series.episodes = series.episodes.slice(0, 7);
   return series;
-}
-
-function setActiveSeries(data, seriesId) {
-  data.series.forEach((s) => {
-    if (s.id !== seriesId && s.status === 'active') s.status = 'archived';
-  });
 }
 
 function withUpload(uploadMiddleware) {
@@ -302,16 +300,15 @@ app.put('/api/admin/config', (req, res) => {
 
 app.get('/api/current', (_req, res) => {
   const data = readData();
-  const active = getActiveSeries(data);
-  if (!active) return res.json(null);
-  res.json(toPublic(active));
+  const list = data.series.map((s) => migrateSeries({ ...s }));
+  res.json(resolveCurrentDisplay(list, enrichOpts()));
 });
 
 app.get('/api/series', (_req, res) => {
   const data = readData();
+  const opts = enrichOpts();
   res.json(
-    data.series
-      .filter((s) => s.status === 'archived' || (s.status === 'active' && getDayIndex(s.startDate) > 7))
+    getPastSeriesCandidates(data.series, opts.now || new Date())
       .map((s) => toPublic(s))
       .sort((a, b) => new Date(b.startDate) - new Date(a.startDate))
   );
@@ -351,9 +348,10 @@ app.post(
     if (!title?.trim()) return res.status(400).json({ error: 'A cím kötelező' });
 
     const newStatus = status || 'draft';
-    if (newStatus === 'active') {
-      data.series.forEach((s) => { if (s.status === 'active') s.status = 'archived'; });
-    }
+    const mode = ['all', 'daily'].includes(releaseMode) ? releaseMode : 'daily';
+    const resolvedStart = startDate || getNextMonday();
+    const mondayErr = assertMondayStartDate(resolvedStart, mode);
+    if (mondayErr) return res.status(400).json({ error: mondayErr });
 
     const newSeries = migrateSeries({
       id: uuidv4(),
@@ -362,14 +360,13 @@ app.post(
       biblicalBasis: (biblicalBasis || '').trim(),
       weeklyMessage: (weeklyMessage || '').trim(),
       coverImage: req.file ? `/uploads/${req.file.filename}` : '',
-      startDate: startDate || new Date().toISOString().split('T')[0],
-      releaseMode: ['all', 'daily'].includes(releaseMode) ? releaseMode : 'daily',
+      startDate: resolvedStart,
+      releaseMode: mode,
       status: newStatus,
       weeklyRecap: { ...emptyRecap(), title: title.trim() },
       episodes: Array.from({ length: 7 }, (_, i) => emptyEpisode(i + 1)),
     });
 
-    if (newStatus === 'active') setActiveSeries(data, newSeries.id);
     data.series.push(newSeries);
     writeData(data);
     res.status(201).json(toAdmin(newSeries));
@@ -396,6 +393,9 @@ app.put(
       series.releaseMode = releaseMode;
     }
 
+    const mondayErr = assertMondayStartDate(series.startDate, series.releaseMode);
+    if (mondayErr) return res.status(400).json({ error: mondayErr });
+
     if (removeCover === 'true' && series.coverImage) {
       deleteFile(series.coverImage);
       series.coverImage = '';
@@ -406,7 +406,6 @@ app.put(
     }
 
     if (status !== undefined && ['draft', 'active', 'archived'].includes(status)) {
-      if (status === 'active') setActiveSeries(data, series.id);
       series.status = status;
     }
 
