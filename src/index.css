@@ -39,90 +39,70 @@ body {
   z-index: 50;
   width: 100%;
   flex-shrink: 0;
-  background: #050505;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #000;
 }
 
 .site-header__inner {
+  position: relative;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  height: 56px;
-  padding: 0 1rem;
+  justify-content: center;
+  min-height: 56px;
+  padding: 10px 1rem;
 }
 
 @media (min-width: 640px) {
   .site-header__inner {
-    height: 64px;
-    padding: 0 1.5rem;
+    min-height: 64px;
+    padding: 12px 1.5rem;
   }
 }
 
-.ifige-logo {
+.site-header__brand {
   display: inline-flex;
   align-items: center;
   text-decoration: none;
   user-select: none;
-  transition: transform 0.22s ease, filter 0.22s ease;
-  transform-origin: left center;
+  transition: transform 0.22s ease, opacity 0.22s ease;
 }
 
-.ifige-logo:hover {
-  transform: scale(1.035);
-  filter: drop-shadow(0 0 10px rgba(229, 9, 20, 0.35));
+.site-header__brand:hover {
+  transform: scale(1.02);
+  opacity: 0.95;
 }
 
-.ifige-logo:active {
+.site-header__brand:active {
   transform: scale(1.01);
 }
 
-.ifige-logo__svg {
+.site-header__brand-img {
   display: block;
-  width: auto;
-  height: 28px;
+  width: min(220px, 58vw);
+  height: auto;
 }
 
 @media (min-width: 640px) {
-  .ifige-logo__svg {
-    height: 32px;
+  .site-header__brand-img {
+    width: min(280px, 42vw);
   }
 }
 
-.ifige-logo__text {
-  font-family: "Outfit", system-ui, sans-serif;
-  font-size: 20px;
-  font-weight: 800;
-  letter-spacing: -0.055em;
-  fill: #f5f5f5;
-}
-
-.ifige-logo__text--soft {
-  opacity: 0.94;
-}
-
-.ifige-logo__i-wrap {
-  transition: transform 0.22s ease;
-}
-
-.ifige-logo:hover .ifige-logo__i-wrap {
-  transform: translateY(-0.5px);
-}
-
-.ifige-logo__i-dot {
-  opacity: 0.92;
-  transition: opacity 0.22s ease;
-}
-
-.ifige-logo:hover .ifige-logo__i-dot {
-  opacity: 1;
-}
-
 .site-header__admin {
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
   font-size: 0.6875rem;
   font-weight: 500;
   color: var(--color-text-muted);
   text-decoration: none;
   transition: color 0.2s;
+}
+
+@media (min-width: 640px) {
+  .site-header__admin {
+    right: 1.5rem;
+  }
 }
 
 .site-header__admin:hover {

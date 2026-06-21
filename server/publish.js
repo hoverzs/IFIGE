@@ -113,6 +113,11 @@ export function getComputedStatus(series, now = new Date()) {
   return 'current';
 }
 
+function isPublicArchived(series, now = new Date()) {
+  if (series.status === 'archived') return true;
+  return getComputedStatus(series, now) === 'archived';
+}
+
 /** Admin megjelenítéshez */
 export function getAdminComputedStatus(series, now = new Date()) {
   if (series.status === 'draft') return 'draft';
@@ -150,7 +155,7 @@ export function findUpcomingSeries(seriesList, now = new Date()) {
 
 export function getArchivedSeries(seriesList, now = new Date()) {
   return seriesList
-    .filter((s) => getComputedStatus(s, now) === 'archived')
+    .filter((s) => s.status !== 'draft' && isPublicArchived(s, now))
     .sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
 }
 
@@ -190,6 +195,15 @@ export function resolveCurrentDisplay(seriesList, opts = {}) {
   const upcoming = findUpcomingSeries(seriesList, now);
   if (upcoming) {
     return { phase: 'upcoming', series: enrichOne(upcoming, 'upcoming'), message: '' };
+  }
+
+  const latestArchived = getArchivedSeries(seriesList, now)[0];
+  if (latestArchived) {
+    return {
+      phase: 'archived',
+      series: enrichOne(latestArchived, 'archived'),
+      message: EMPTY_MESSAGE,
+    };
   }
 
   return { phase: 'empty', series: null, message: EMPTY_MESSAGE };
@@ -308,6 +322,10 @@ export function enrichSeries(series, opts = {}) {
       isComplete: false,
       showAllEpisodes: false,
     };
+  }
+
+  if (s.status === 'archived') {
+    return buildUnlockedSeries(s, now, resolveHeroImage, 'archived');
   }
 
   if (showAllEpisodes) {

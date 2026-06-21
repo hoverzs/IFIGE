@@ -76,18 +76,27 @@ export default function HomePage() {
 
   const series = home.series;
   const isUpcoming = home.phase === 'upcoming';
+  const isArchivedFeatured = home.phase === 'archived';
   const featuredEpisode = getFeaturedEpisode(series);
   const heroImage = series.heroImage || series.coverImage || series.episodes[0]?.image;
   const unlockedCount = series.episodes.filter((e) => e.status !== 'locked').length;
   const statusLabel = isUpcoming
     ? `Következő sorozat · ${series.startDate}`
-    : series.showAllEpisodes
-      ? 'Teszt mód · mind a 7 epizód elérhető'
-      : `${series.currentDay}/${series.totalDays} · Heti sorozat`;
+    : isArchivedFeatured
+      ? 'Legutóbbi sorozat · minden epizód elérhető'
+      : series.showAllEpisodes
+        ? 'Teszt mód · mind a 7 epizód elérhető'
+        : `${series.currentDay}/${series.totalDays} · Heti sorozat`;
 
   return (
     <div className="min-h-dvh pb-24 bg-bg">
       <Header />
+
+      {isArchivedFeatured && home.message && (
+        <div className="mx-5 mt-6 rounded-xl border border-border bg-bg-card/50 px-4 py-3 text-sm text-text-muted text-center">
+          {home.message}
+        </div>
+      )}
 
       {isUpcoming && (
         <div className="mx-5 mt-6 rounded-xl border border-accent/30 bg-accent/5 px-4 py-3 text-sm text-text/90">
@@ -113,7 +122,7 @@ export default function HomePage() {
             )}
             {!isUpcoming && featuredEpisode && (
               <p className="text-white/90 text-sm sm:text-base font-medium mb-5">
-                {featuredEpisode.status === 'current' ? 'Mai epizód: ' : 'Kezdd itt: '}
+                {featuredEpisode.status === 'current' ? 'Mai epizód: ' : isArchivedFeatured ? 'Nézd meg: ' : 'Kezdd itt: '}
                 <span className="text-accent">{featuredEpisode.title}</span>
               </p>
             )}
@@ -166,7 +175,7 @@ export default function HomePage() {
             <div className="h-1 bg-bg-card rounded-full overflow-hidden">
               <div
                 className="h-full bg-accent rounded-full transition-all"
-                style={{ width: `${getEpisodeProgress(series)}%` }}
+                style={{ width: `${isArchivedFeatured ? 100 : getEpisodeProgress(series)}%` }}
               />
             </div>
           </div>

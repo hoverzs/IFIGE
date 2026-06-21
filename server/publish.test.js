@@ -148,10 +148,19 @@ assert(sundayPm.phase !== 'current' || sundayPm.series?.title !== 'Hét 1', 'w1 
 const beforeW1 = resolveCurrentDisplay(list, { now: mk('2026-06-21') });
 assert(beforeW1.phase === 'upcoming' && beforeW1.series.title === 'Hét 1', 'w1 előnézet a hét előtt');
 
-const afterW1Only = resolveCurrentDisplay([week1], { now: mk('2026-07-07') });
-assert(afterW1Only.phase === 'empty', 'lezárt hét után üzenet, ha nincs következő');
+const afterW1Only = resolveHomeDisplay([week1], { now: mk('2026-07-07') });
+assert(afterW1Only.phase === 'archived' && afterW1Only.series?.title === 'Hét 1', 'lezárt hét után legutóbbi hero');
 
 const empty = resolveCurrentDisplay([], { now: mk('2026-06-24') });
 assert(empty.phase === 'empty' && empty.message.includes('hamarosan'), 'üres állapot üzenet');
+
+const manualArchived = resolveHomeDisplay(
+  [{ ...week1, status: 'archived', title: 'Archivált' }],
+  { now: mk('2026-06-24') },
+);
+assert(
+  manualArchived.phase === 'archived' && manualArchived.series?.title === 'Archivált',
+  'manuálisan archivált sorozat is hero',
+);
 
 console.log('✓ több sorozat ütemezési teszt sikeres');
