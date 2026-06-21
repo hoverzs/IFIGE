@@ -1,4 +1,6 @@
 export type EpisodePublishStatus = 'available' | 'current' | 'locked';
+export type EpisodeContentStatus = 'missing' | 'incomplete' | 'complete';
+export type EpisodeAdminStatus = 'draft' | 'locked' | 'current' | 'available' | 'incomplete' | 'missing';
 export type EpisodeEditStatus = 'empty' | 'in_progress' | 'complete';
 export type SeriesStatus = 'draft' | 'active' | 'archived';
 export type ReleaseMode = 'all' | 'daily';
@@ -14,12 +16,23 @@ export interface Episode {
   teaser: string;
   image: string;
   status?: EpisodePublishStatus;
+  publishDate?: string;
+  weekdayLabel?: string;
+  contentStatus?: EpisodeContentStatus;
+  publishStatus?: EpisodePublishStatus;
+  adminStatus?: EpisodeAdminStatus;
+  missingFields?: string[];
 }
 
 export interface WeeklyRecap {
   title: string;
   text: string;
   video?: string;
+  contentStatus?: EpisodeContentStatus;
+  status?: RecapStatus | 'available';
+  publishDate?: string;
+  publishTime?: string;
+  timezone?: string;
 }
 
 export interface Series {
@@ -38,6 +51,12 @@ export interface Series {
   currentDay?: number;
   totalDays?: number;
   recapStatus?: RecapStatus;
+  recapPublishDate?: string;
+  recapPublishTime?: string;
+  recapPublishTimezone?: string;
+  recapContentStatus?: EpisodeContentStatus;
+  recapAdminStatus?: EpisodeAdminStatus | 'available';
+  dayIndex?: number;
   isComplete?: boolean;
   showAllEpisodes?: boolean;
 }
@@ -97,9 +116,25 @@ export function normalizeSeries(raw: Partial<Series> & { id: string }): Series {
     currentDay: raw.currentDay,
     totalDays: raw.totalDays ?? 7,
     recapStatus: raw.recapStatus,
+    recapPublishDate: raw.recapPublishDate,
+    recapPublishTime: raw.recapPublishTime,
+    recapPublishTimezone: raw.recapPublishTimezone,
+    recapContentStatus: raw.recapContentStatus,
+    recapAdminStatus: raw.recapAdminStatus,
+    dayIndex: raw.dayIndex,
     isComplete: raw.isComplete,
     showAllEpisodes: raw.showAllEpisodes,
   };
+}
+
+export function isEpisodeContentReady(ep: Episode): boolean {
+  return !ep.contentStatus || ep.contentStatus === 'complete';
+}
+
+export function getEpisodePublicMessage(ep: Episode): string {
+  if (ep.contentStatus === 'missing') return CONTENT_STATUS_MESSAGES.missing;
+  if (ep.contentStatus === 'incomplete') return CONTENT_STATUS_MESSAGES.incomplete;
+  return '';
 }
 
 export function getEpisodeEditStatus(ep: Episode): EpisodeEditStatus {
@@ -153,6 +188,21 @@ export const RELEASE_MODE_LABELS: Record<ReleaseMode, string> = {
   daily: 'Naponta egy rész',
 };
 
+export const ADMIN_STATUS_LABELS: Record<EpisodeAdminStatus | 'available', string> = {
+  draft: 'Vázlat',
+  locked: 'Zárolt',
+  current: 'Mai rész',
+  available: 'Elérhető',
+  incomplete: 'Hiányos',
+  missing: 'Hiányzik',
+};
+
+export const CONTENT_STATUS_MESSAGES: Record<EpisodeContentStatus, string> = {
+  missing: 'Ez a rész még készül.',
+  incomplete: 'Hamarosan elérhető.',
+  complete: '',
+};
+
 async function readApiError(res: Response): Promise<string> {
   try {
     const data = await res.json();
@@ -181,6 +231,19 @@ export async function fetchPastSeries(): Promise<Series[]> {
   if (!res.ok) throw new Error('Hiba a betöltés során');
   const data = await res.json();
   return data.map(normalizeSeries);
+}
+
+export async function fetchAdminSeries(id: string): Promise<Series> {
+  const res = await fetch(`/api/admin/series/${id}`);
+  if (!res.ok) throw new Error('Sorozat nem található');
+  return normalizeSeries(await res.json());
+}
+
+export async function fetchNextMonday(): Promise<string> {
+  const res = await fetch('/api/admin/next-monday');
+  if (!res.ok) throw new Error('Dátum betöltési hiba');
+  const data = await res.json();
+  return data.startDate;
 }
 
 export async function fetchAllSeries(): Promise<Series[]> {

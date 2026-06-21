@@ -30,13 +30,30 @@ export default function RecapPage() {
     return (
       <div className="min-h-dvh flex flex-col items-center justify-center gap-4 px-6 text-center">
         <h2 className="text-xl font-bold">Heti finálé</h2>
-        <p className="text-text-muted text-sm">A hét lezárulta után válik elérhetővé.</p>
+        <p className="text-text-muted text-sm">
+          Vasárnap 16:00 után válik elérhetővé
+          {series.recapPublishDate ? ` (${series.recapPublishDate})` : ''}.
+        </p>
         <Link to="/" className="text-accent text-sm">← Vissza</Link>
       </div>
     );
   }
 
   const recap = series.weeklyRecap;
+  const recapIncomplete = recap.contentStatus && recap.contentStatus !== 'complete';
+
+  if (recapIncomplete) {
+    return (
+      <div className="min-h-dvh flex flex-col items-center justify-center gap-4 px-6 text-center">
+        <h2 className="text-xl font-bold">{recap.title || series.title}</h2>
+        <p className="text-text-muted text-sm">
+          {recap.contentStatus === 'missing' ? 'Ez a rész még készül.' : 'Hamarosan elérhető.'}
+        </p>
+        <Link to="/" className="text-accent text-sm">← Vissza</Link>
+      </div>
+    );
+  }
+
   const weekImages = series.episodes.filter((ep) => ep.image);
 
   return (

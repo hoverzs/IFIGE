@@ -4,6 +4,13 @@ import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import {
+  enrichSeries,
+  sanitizeForPublic,
+  enrichForAdmin,
+  getDayIndex,
+  getNextMonday,
+} from './publish.js';
 import { v4 as uuidv4 } from 'uuid';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -105,28 +112,38 @@ function writeData(data) {
 
 function readConfig() {
   if (!fs.existsSync(CONFIG_FILE)) {
-    const seed = { showAllEpisodes: true };
+    const seed = { showAllEpisodes: false };
     writeConfig(seed);
     return seed;
   }
-  return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+  const config = JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf-8'));
+  if (typeof config.showAllEpisodes !== 'boolean') {
+    config.showAllEpisodes = false;
+  }
+  return config;
 }
 
 function writeConfig(config) {
   fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
 }
 
-function unlockAllForTest(s) {
-  return {
-    ...s,
-    heroImage: resolveHeroImage(s, 1),
-    currentDay: 7,
-    totalDays: 7,
-    episodes: s.episodes.map((ep) => ({ ...ep, status: 'available' })),
-    recapStatus: 'available',
-    isComplete: true,
-    showAllEpisodes: true,
+function enrichOpts() {
+  const opts = {
+    showAllEpisodes: !!readConfig().showAllEpisodes,
+    resolveHeroImage,
   };
+  if (!IS_PRODUCTION && process.env.PUBLISH_TEST_NOW) {
+    opts.now = new Date(process.env.PUBLISH_TEST_NOW);
+  }
+  return opts;
+}
+
+function toPublic(series) {
+  return sanitizeForPublic(enrichSeries(migrateSeries({ ...series }), enrichOpts()));
+}
+
+function toAdmin(series) {
+  return enrichForAdmin(migrateSeries({ ...series }), enrichOpts());
 }
 
 function emptyEpisode(day) {
@@ -191,13 +208,6 @@ function deleteFile(filePath) {
   if (fs.existsSync(full)) fs.unlinkSync(full);
 }
 
-function getDayIndex(startDate, today = new Date()) {
-  const start = new Date(startDate + 'T00:00:00');
-  const now = new Date(today);
-  now.setHours(0, 0, 0, 0);
-  return Math.floor((now - start) / (1000 * 60 * 60 * 24)) + 1;
-}
-
 function getActiveSeries(data) {
   const active = data.series.filter((s) => s.status === 'active');
   if (!active.length) return null;
@@ -239,59 +249,6 @@ function migrateSeries(series) {
   }
   series.episodes = series.episodes.slice(0, 7);
   return series;
-}
-
-function enrichSeries(series, today = new Date()) {
-  const s = migrateSeries({ ...series });
-  const dayIndex = getDayIndex(s.startDate, today);
-
-  if (s.status === 'draft') {
-    return {
-      ...s,
-      heroImage: resolveHeroImage(s, 1),
-      currentDay: 0,
-      totalDays: 7,
-      episodes: s.episodes.map((ep) => ({ ...ep, status: 'locked' })),
-      recapStatus: 'locked',
-      isComplete: false,
-      showAllEpisodes: false,
-    };
-  }
-
-  if (readConfig().showAllEpisodes) {
-    return unlockAllForTest(s);
-  }
-
-  if (s.releaseMode === 'all') {
-    return {
-      ...s,
-      heroImage: resolveHeroImage(s, 1),
-      currentDay: 7,
-      totalDays: 7,
-      episodes: s.episodes.map((ep) => ({ ...ep, status: 'available' })),
-      recapStatus: 'available',
-      isComplete: true,
-      showAllEpisodes: false,
-    };
-  }
-
-  const clampedDay = Math.min(Math.max(dayIndex, 1), 7);
-
-  return {
-    ...s,
-    heroImage: resolveHeroImage(s, clampedDay),
-    currentDay: clampedDay,
-    totalDays: 7,
-    episodes: s.episodes.map((ep) => {
-      let status = 'locked';
-      if (ep.day < clampedDay) status = 'available';
-      else if (ep.day === clampedDay) status = 'current';
-      return { ...ep, status };
-    }),
-    recapStatus: dayIndex > 7 ? 'available' : 'locked',
-    isComplete: dayIndex > 7,
-    showAllEpisodes: false,
-  };
 }
 
 function setActiveSeries(data, seriesId) {
@@ -342,7 +299,7 @@ app.get('/api/current', (_req, res) => {
   const data = readData();
   const active = getActiveSeries(data);
   if (!active) return res.json(null);
-  res.json(enrichSeries(active));
+  res.json(toPublic(active));
 });
 
 app.get('/api/series', (_req, res) => {
@@ -350,7 +307,7 @@ app.get('/api/series', (_req, res) => {
   res.json(
     data.series
       .filter((s) => s.status === 'archived' || (s.status === 'active' && getDayIndex(s.startDate) > 7))
-      .map((s) => enrichSeries(s))
+      .map((s) => toPublic(s))
       .sort((a, b) => new Date(b.startDate) - new Date(a.startDate))
   );
 });
@@ -359,14 +316,25 @@ app.get('/api/series/:id', (req, res) => {
   const data = readData();
   const series = data.series.find((s) => s.id === req.params.id);
   if (!series) return res.status(404).json({ error: 'Sorozat nem található' });
-  res.json(enrichSeries(series));
+  res.json(toPublic(series));
 });
 
 app.get('/api/admin/series', (_req, res) => {
   const data = readData();
   res.json(
-    data.series.map((s) => enrichSeries(s)).sort((a, b) => new Date(b.startDate) - new Date(a.startDate))
+    data.series.map((s) => toAdmin(s)).sort((a, b) => new Date(b.startDate) - new Date(a.startDate))
   );
+});
+
+app.get('/api/admin/series/:id', (req, res) => {
+  const data = readData();
+  const series = data.series.find((s) => s.id === req.params.id);
+  if (!series) return res.status(404).json({ error: 'Sorozat nem található' });
+  res.json(toAdmin(series));
+});
+
+app.get('/api/admin/next-monday', (_req, res) => {
+  res.json({ startDate: getNextMonday() });
 });
 
 app.post(
@@ -399,7 +367,7 @@ app.post(
     if (newStatus === 'active') setActiveSeries(data, newSeries.id);
     data.series.push(newSeries);
     writeData(data);
-    res.status(201).json(enrichSeries(newSeries));
+    res.status(201).json(toAdmin(newSeries));
   }
 );
 
@@ -439,7 +407,7 @@ app.put(
 
     data.series[idx] = series;
     writeData(data);
-    res.json(enrichSeries(series));
+    res.json(toAdmin(series));
   }
 );
 
@@ -467,7 +435,7 @@ app.put(
     }
 
     writeData(data);
-    res.json(enrichSeries(series));
+    res.json(toAdmin(series));
   }
 );
 
@@ -500,7 +468,7 @@ app.put(
     }
 
     writeData(data);
-    res.json(enrichSeries(series));
+    res.json(toAdmin(series));
   }
 );
 
@@ -517,7 +485,7 @@ app.delete('/api/series/:id/episodes/:day', (req, res) => {
   deleteFile(ep.image);
   Object.assign(ep, emptyEpisode(day));
   writeData(data);
-  res.json(enrichSeries(series));
+  res.json(toAdmin(series));
 });
 
 app.delete('/api/series/:id', (req, res) => {

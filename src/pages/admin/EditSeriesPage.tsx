@@ -4,9 +4,9 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 
 import {
 
-  deleteSeries, fetchSeries, updateSeries, updateEpisode,
+  deleteSeries, fetchAdminSeries, updateSeries, updateEpisode,
   fetchAppConfig, updateAppConfig,
-  episodeFormDataFrom, getEpisodeEditStatus, getRecapEditStatus, getSeriesReadiness, EDIT_STATUS_LABELS,
+  episodeFormDataFrom, getEpisodeEditStatus, getRecapEditStatus, getSeriesReadiness, EDIT_STATUS_LABELS, ADMIN_STATUS_LABELS,
 
 } from '../../api';
 
@@ -65,7 +65,7 @@ export default function EditSeriesPage() {
   const [coverPreview, setCoverPreview] = useState('');
 
   const [removeCover, setRemoveCover] = useState(false);
-  const [showAllEpisodes, setShowAllEpisodes] = useState(true);
+  const [showAllEpisodes, setShowAllEpisodes] = useState(false);
 
   useEffect(() => {
     fetchAppConfig().then((c) => setShowAllEpisodes(c.showAllEpisodes)).catch(console.error);
@@ -81,7 +81,7 @@ export default function EditSeriesPage() {
     setLoading(true);
     setError('');
 
-    fetchSeries(id)
+    fetchAdminSeries(id)
       .then((s) => {
         setSeries(s);
         setTitle(s.title);
@@ -102,7 +102,7 @@ export default function EditSeriesPage() {
     try {
       await updateAppConfig({ showAllEpisodes });
       if (id) {
-        const refreshed = await fetchSeries(id);
+        const refreshed = await fetchAdminSeries(id);
         setSeries(refreshed);
       }
     } catch (err) {
@@ -298,9 +298,17 @@ export default function EditSeriesPage() {
 
           <div className="grid grid-cols-2 gap-3">
 
-            <Field label="Kezdődátum">
+            <Field label="Kezdődátum (hétfő)">
 
               <input type="date" className="input" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+
+              {releaseMode === 'daily' && !startDate && (
+                <p className="text-xs text-accent mt-1.5">Figyelem: napi publikálás startDate nélkül nem működik.</p>
+              )}
+
+              {releaseMode === 'daily' && startDate && (
+                <p className="text-xs text-text-muted mt-1.5">Heti finálé: {startDate} + 6 nap, vasárnap 16:00 (Europe/Bucharest).</p>
+              )}
 
             </Field>
 
@@ -342,7 +350,7 @@ export default function EditSeriesPage() {
               />
               <span className="text-sm">showAllEpisodes — mind a 7 epizód kattintható</span>
             </label>
-            <p className="text-xs text-text-muted mt-1.5">Prototípus teszteléshez. Később kikapcsolható.</p>
+            <p className="text-xs text-text-muted mt-1.5">Csak teszt/debug. Normál működés: releaseMode daily + startDate.</p>
             <Button onClick={saveAppConfig} variant="ghost" className="mt-2 !text-sm">Teszt mód mentése</Button>
           </Field>
 
@@ -395,7 +403,7 @@ export default function EditSeriesPage() {
 
 
           <section className="mx-5 mt-5 rounded-xl border border-border bg-bg-card/50 px-4 py-3">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-text-muted mb-3">Állapot</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mb-3">Állapot</p>
             <ul className="space-y-2 text-sm">
               <li className="flex justify-between gap-4">
                 <span className="text-text-muted">Sorozat kész</span>
@@ -409,6 +417,18 @@ export default function EditSeriesPage() {
                 <span className="text-text-muted">Heti videó</span>
                 <span className="font-medium">{readiness.recapVideo ? 'Feltöltve' : 'Hiányzik'}</span>
               </li>
+              {series.recapAdminStatus && (
+                <li className="flex justify-between gap-4">
+                  <span className="text-text-muted">Heti finálé státusz</span>
+                  <span className="font-medium">{ADMIN_STATUS_LABELS[series.recapAdminStatus as keyof typeof ADMIN_STATUS_LABELS] || series.recapAdminStatus}</span>
+                </li>
+              )}
+              {series.dayIndex !== undefined && releaseMode === 'daily' && (
+                <li className="flex justify-between gap-4">
+                  <span className="text-text-muted">Publikálási nap</span>
+                  <span className="font-medium">{series.dayIndex < 1 ? 'Még nem kezdődött' : series.dayIndex > 7 ? 'Hét lezárva' : `${series.dayIndex}. nap`}</span>
+                </li>
+              )}
             </ul>
           </section>
 
@@ -546,9 +566,27 @@ function EpisodeCard({ episode, onOpen, onTitleSave }: { episode: Episode; onOpe
 
   const [localTitle, setLocalTitle] = useState(episode.title);
 
-  const status = getEpisodeEditStatus(episode);
+  const editStatus = getEpisodeEditStatus(episode);
 
-  const colors = { empty: 'border-border', in_progress: 'border-yellow-500/50', complete: 'border-green-500/50' };
+  const statusColors: Record<string, string> = {
+    draft: 'border-text-muted/40',
+    locked: 'border-border',
+    current: 'border-accent',
+    available: 'border-green-500/50',
+    incomplete: 'border-yellow-500/50',
+    missing: 'border-accent/40',
+    empty: 'border-border',
+    in_progress: 'border-yellow-500/50',
+    complete: 'border-green-500/50',
+  };
+
+  const borderColor = episode.adminStatus
+    ? statusColors[episode.adminStatus] || 'border-border'
+    : statusColors[editStatus] || 'border-border';
+
+  const statusLabel = episode.adminStatus
+    ? ADMIN_STATUS_LABELS[episode.adminStatus]
+    : EDIT_STATUS_LABELS[editStatus];
 
 
 
@@ -560,7 +598,7 @@ function EpisodeCard({ episode, onOpen, onTitleSave }: { episode: Episode; onOpe
 
     <div className="flex-shrink-0 w-[200px] sm:w-[220px] snap-start">
 
-      <button type="button" onClick={onOpen} className={`group w-full rounded-xl overflow-hidden border-2 ${colors[status]} bg-bg-card hover:border-accent/40 active:scale-[0.98] transition-all`}>
+      <button type="button" onClick={onOpen} className={`group w-full rounded-xl overflow-hidden border-2 ${borderColor} bg-bg-card hover:border-accent/40 active:scale-[0.98] transition-all`}>
 
         <div className="relative aspect-[4/5] overflow-hidden">
 
@@ -572,7 +610,7 @@ function EpisodeCard({ episode, onOpen, onTitleSave }: { episode: Episode; onOpe
 
           <div className="absolute top-2 right-2">
 
-            <StatusDot status={status} />
+            <StatusDot status={editStatus} />
 
           </div>
 
@@ -580,7 +618,15 @@ function EpisodeCard({ episode, onOpen, onTitleSave }: { episode: Episode; onOpe
 
             <p className="text-sm font-bold leading-tight line-clamp-2">{episode.title || `${episode.day}. rész`}</p>
 
-            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mt-1">{EDIT_STATUS_LABELS[status]}</p>
+            <p className="text-[10px] font-bold uppercase tracking-wider text-text-muted mt-1">{episode.weekdayLabel || `${episode.day}. nap`}</p>
+
+            <p className="text-[10px] text-text-muted mt-0.5">{episode.publishDate || '—'}</p>
+
+            <p className="text-[10px] font-bold uppercase tracking-wider text-accent mt-1">{statusLabel}</p>
+
+            {episode.missingFields && episode.missingFields.length > 0 && (
+              <p className="text-[9px] text-text-muted mt-1 line-clamp-2">Hiányzik: {episode.missingFields.join(', ')}</p>
+            )}
 
           </div>
 

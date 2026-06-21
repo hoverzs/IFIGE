@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { createSeries } from '../../api';
+import { createSeries, fetchNextMonday } from '../../api';
 import MediaUpload from '../../components/MediaUpload';
 import Button from '../../components/Button';
 
@@ -10,7 +10,7 @@ export default function NewSeriesPage() {
   const [description, setDescription] = useState('');
   const [biblicalBasis, setBiblicalBasis] = useState('');
   const [weeklyMessage, setWeeklyMessage] = useState('');
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [startDate, setStartDate] = useState('');
   const [releaseMode, setReleaseMode] = useState<'all' | 'daily'>('daily');
   const [status, setStatus] = useState<'draft' | 'active' | 'archived'>('draft');
   const [cover, setCover] = useState<File | null>(null);
@@ -18,9 +18,17 @@ export default function NewSeriesPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    fetchNextMonday().then(setStartDate).catch(console.error);
+  }, []);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) { setError('A cím kötelező'); return; }
+    if (releaseMode === 'daily' && !startDate) {
+      setError('A kezdődátum kötelező a napi publikáláshoz');
+      return;
+    }
     setSaving(true);
     setError('');
     try {
@@ -64,8 +72,14 @@ export default function NewSeriesPage() {
         <Field label="Rövid leírás">
           <textarea className="input resize-none" rows={2} value={description} onChange={(e) => setDescription(e.target.value)} />
         </Field>
-        <Field label="Kezdődátum">
-          <input type="date" className="input" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+        <Field label="Kezdődátum (hétfő)" required={releaseMode === 'daily'}>
+          <input type="date" className="input" value={startDate} onChange={(e) => setStartDate(e.target.value)} required={releaseMode === 'daily'} />
+          {releaseMode === 'daily' && !startDate && (
+            <p className="text-xs text-accent mt-1.5">A napi publikálás csak hétfői kezdődátummal működik.</p>
+          )}
+          {releaseMode === 'daily' && startDate && (
+            <p className="text-xs text-text-muted mt-1.5">Az 1. rész ezen a napon nyílik meg; a heti finálé vasárnap 16:00-kor (Europe/Bucharest).</p>
+          )}
         </Field>
         <Field label="Megjelenés">
           <select className="input" value={releaseMode} onChange={(e) => setReleaseMode(e.target.value as typeof releaseMode)}>

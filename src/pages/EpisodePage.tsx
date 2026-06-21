@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { fetchSeries } from '../api';
+import { fetchSeries, getEpisodePublicMessage } from '../api';
 import type { Episode, Series } from '../api';
 import EpisodeMedia from '../components/EpisodeMedia';
 
@@ -35,6 +35,18 @@ export default function EpisodePage() {
         <span className="text-xs font-bold uppercase tracking-widest text-text-muted">{episode.day}. epizód</span>
         <h2 className="text-xl font-bold">{episode.title || 'Hamarosan'}</h2>
         <p className="text-text-muted text-sm">Ez az epizód még nem nyílt meg.</p>
+        <Link to="/" className="text-accent text-sm">← Vissza</Link>
+      </div>
+    );
+  }
+
+  const contentMessage = getEpisodePublicMessage(episode);
+  if (contentMessage) {
+    return (
+      <div className="min-h-dvh flex flex-col items-center justify-center gap-4 px-6 text-center">
+        <span className="text-xs font-bold uppercase tracking-widest text-text-muted">{episode.day}. epizód</span>
+        <h2 className="text-xl font-bold">{episode.title || `${episode.day}. rész`}</h2>
+        <p className="text-text-muted text-sm max-w-sm">{contentMessage}</p>
         <Link to="/" className="text-accent text-sm">← Vissza</Link>
       </div>
     );

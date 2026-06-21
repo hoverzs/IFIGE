@@ -21,6 +21,7 @@ export default function WeeklyFinaleSection({ series }: Props) {
   const hasVideo = !!recap.video;
   const hasNarration = !!recap.text?.trim();
   const recapOpen = series.recapStatus === 'available';
+  const recapReady = !recap.contentStatus || recap.contentStatus === 'complete';
   const previewImage = getFinalePreviewImage(series);
 
   return (
@@ -69,16 +70,20 @@ export default function WeeklyFinaleSection({ series }: Props) {
           )}
 
           <div className="flex flex-wrap gap-3">
-            {hasVideo && recapOpen ? (
+            {hasVideo && recapOpen && recapReady ? (
               <Button to={`/series/${series.id}/recap`} className="!text-sm">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
                 Lejátszás
               </Button>
-            ) : hasVideo && !recapOpen ? (
+            ) : hasVideo && recapOpen && !recapReady ? (
               <span className="text-sm text-text-muted px-4 py-2 rounded-full border border-border">Hamarosan elérhető</span>
+            ) : hasVideo && !recapOpen ? (
+              <span className="text-sm text-text-muted px-4 py-2 rounded-full border border-border">
+                Vasárnap 16:00 után{series.recapPublishDate ? ` (${series.recapPublishDate})` : ''}
+              </span>
             ) : null}
 
-            {hasNarration && recapOpen && (
+            {hasNarration && recapOpen && recapReady && (
               <Link
                 to={`/series/${series.id}/recap`}
                 className="inline-flex items-center gap-2 text-sm font-medium text-accent hover:text-accent-hover px-4 py-2 rounded-full border border-accent/30 hover:border-accent/60 transition-colors"
