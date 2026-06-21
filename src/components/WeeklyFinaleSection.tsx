@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { Series } from '../api';
-import { mediaUrl } from '../api';
+import { mediaUrl, seriesUrl } from '../api';
 import Button from './Button';
 
 interface Props {
@@ -42,7 +42,7 @@ export default function WeeklyFinaleSection({ series }: Props) {
             <div className="absolute inset-0 bg-gradient-to-t from-bg-card via-bg-card/70 to-black/20" />
             {hasVideo && recapOpen && (
               <Link
-                to={`/series/${series.id}/recap`}
+                to={seriesUrl(series, '/recap')}
                 className="absolute inset-0 flex items-center justify-center group"
                 aria-label="Heti finálé lejátszása"
               >
@@ -71,7 +71,7 @@ export default function WeeklyFinaleSection({ series }: Props) {
 
           <div className="flex flex-wrap gap-3">
             {hasVideo && recapOpen && recapReady ? (
-              <Button to={`/series/${series.id}/recap`} className="!text-sm">
+              <Button to={seriesUrl(series, '/recap')} className="!text-sm">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
                 Lejátszás
               </Button>
@@ -85,7 +85,7 @@ export default function WeeklyFinaleSection({ series }: Props) {
 
             {hasNarration && recapOpen && recapReady && (
               <Link
-                to={`/series/${series.id}/recap`}
+                to={seriesUrl(series, '/recap')}
                 className="inline-flex items-center gap-2 text-sm font-medium text-accent hover:text-accent-hover px-4 py-2 rounded-full border border-accent/30 hover:border-accent/60 transition-colors"
               >
                 Narráció megnyitása

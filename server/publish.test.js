@@ -11,8 +11,10 @@ import {
   getWeekdayNameForDate,
   validateStartDate,
   resolveCurrentDisplay,
-  findCurrentWeekSeries,
+  resolveHomeDisplay,
+  findCurrentSeries,
   findUpcomingSeries,
+  getComputedStatus,
 } from './publish.js';
 
 const START = '2026-06-22';
@@ -101,6 +103,10 @@ assert(isRecapAvailable(START, mk('2026-06-28', 16)), '16:00 után recap availab
 
 r = sh('2026-06-28', 16);
 assert(r.recap === 'available', 'enrichSeries recap 16:00-kor available');
+assert(getComputedStatus(baseSeries, mk('2026-06-28', 16)) === 'archived', 'vasárnap 16:00 után archived');
+
+r = sh('2026-06-28', 10);
+assert(getComputedStatus(baseSeries, mk('2026-06-28', 10)) === 'current', 'vasárnap délelőtt még current');
 
 console.log('✓ publish.test.js — minden dátumteszt sikeres');
 console.log(`  startDate ${START} (${getWeekdayNameForDate(START)}) → finálé ${recap.publishDate} 16:00 ${recap.timezone}`);
@@ -124,14 +130,20 @@ const week2 = {
 };
 const list = [week1, week2];
 
-assert(findCurrentWeekSeries(list, mk('2026-06-24'))?.id === 'w1', 'aktuális hét: w1');
+assert(findCurrentSeries(list, mk('2026-06-24'))?.id === 'w1', 'aktuális hét: w1');
 assert(findUpcomingSeries(list, mk('2026-06-24'))?.id === 'w2', 'következő hét előnézet: w2');
+
+const home = resolveHomeDisplay(list, { now: mk('2026-06-24') });
+assert(home.archivedSeries.length === 0 || home.phase === 'current', 'home current week');
 
 const gap = resolveCurrentDisplay(list, { now: mk('2026-06-29') });
 assert(gap.phase === 'current' && gap.series.title === 'Hét 2', 'w2 indul hétfőn');
 
 const sundayW1 = resolveCurrentDisplay(list, { now: mk('2026-06-28', 10) });
-assert(sundayW1.phase === 'current' && sundayW1.series.title === 'Hét 1', 'w1 vasárnap még aktuális');
+assert(sundayW1.phase === 'current' && sundayW1.series.title === 'Hét 1', 'w1 vasárnap délelőtt még aktuális');
+
+const sundayPm = resolveHomeDisplay(list, { now: mk('2026-06-28', 16) });
+assert(sundayPm.phase !== 'current' || sundayPm.series?.title !== 'Hét 1', 'w1 vasárnap 16:00 után nem hero');
 
 const beforeW1 = resolveCurrentDisplay(list, { now: mk('2026-06-21') });
 assert(beforeW1.phase === 'upcoming' && beforeW1.series.title === 'Hét 1', 'w1 előnézet a hét előtt');

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { Series } from '../api';
+import { seriesUrl } from '../api';
 import LiveImage from './LiveImage';
 
 interface Props {
@@ -64,7 +65,7 @@ export default function RecapStripCard({ series }: Props) {
   if (locked) return card;
 
   return (
-    <Link to={`/series/${series.id}/recap`}>
+    <Link to={seriesUrl(series, '/recap')}>
       {card}
     </Link>
   );

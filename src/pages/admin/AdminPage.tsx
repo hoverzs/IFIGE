@@ -7,7 +7,7 @@ import {
   mediaUrl,
   placeholderCover,
   SERIES_STATUS_LABELS,
-  SCHEDULE_PHASE_LABELS,
+  COMPUTED_STATUS_LABELS,
 } from '../../api';
 import type { Series } from '../../api';
 import Button from '../../components/Button';
@@ -86,9 +86,7 @@ function SeriesRow({
   onDelete: (e: React.MouseEvent, s: Series) => void;
 }) {
   const navigate = useNavigate();
-  const doneCount = series.episodes.filter(
-    (ep) => getEpisodeEditStatus(ep) === 'complete'
-  ).length;
+  const episodesComplete = series.episodes.filter((ep) => getEpisodeEditStatus(ep) === 'complete').length;
 
   return (
     <div className="bg-bg-card rounded-2xl border border-border overflow-hidden">
@@ -109,10 +107,13 @@ function SeriesRow({
             <StatusBadge status={series.status} />
           </div>
           <p className="text-xs text-text-muted">
-            {doneCount}/7 epizód kész · {series.startDate}
-            {series.schedulePhase && series.status === 'active' && (
-              <> · {SCHEDULE_PHASE_LABELS[series.schedulePhase]}</>
+            {series.startDate}
+            {series.computedStatus && series.status !== 'draft' && (
+              <> · {COMPUTED_STATUS_LABELS[series.computedStatus as keyof typeof COMPUTED_STATUS_LABELS] || series.computedStatus}</>
             )}
+            {series.computedStatus === 'draft' && <> · Vázlat</>}
+            <> · {episodesComplete}/7 epizód</>
+            <> · Finálé: {series.recapHasUpload || series.recap?.video || series.weeklyRecap?.video ? 'igen' : 'nincs'}</>
           </p>
         </div>
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-text-muted flex-shrink-0">

@@ -1,3 +1,5 @@
+export type EpisodePublishStatus = 'available' | 'current' | 'locked';
+export type ComputedSeriesStatus = 'upcoming' | 'current' | 'archived' | 'draft';
 export type DisplayPhase = 'current' | 'upcoming';
 export type SchedulePhase = 'draft' | 'archived' | 'upcoming' | 'current' | 'past' | 'always';
 export type CurrentPhase = 'current' | 'upcoming' | 'empty';
@@ -37,16 +39,22 @@ export interface WeeklyRecap {
   timezone?: string;
 }
 
+export type Recap = WeeklyRecap;
+
 export interface Series {
   id: string;
+  slug?: string;
   title: string;
+  subtitle: string;
   description: string;
   biblicalBasis: string;
+  weeklySentence: string;
   weeklyMessage: string;
   coverImage: string;
   startDate: string;
   releaseMode?: ReleaseMode;
   status: SeriesStatus;
+  recap: Recap;
   weeklyRecap: WeeklyRecap;
   episodes: Episode[];
   heroImage?: string;
@@ -63,7 +71,9 @@ export interface Series {
   startDateWeekday?: string;
   startDateWarning?: string;
   schedulePhase?: SchedulePhase;
+  computedStatus?: ComputedSeriesStatus | null;
   displayPhase?: DisplayPhase;
+  recapHasUpload?: boolean;
   isComplete?: boolean;
   showAllEpisodes?: boolean;
 }
@@ -102,21 +112,25 @@ export function normalizeSeries(raw: Partial<Series> & { id: string }): Series {
   }
 
   const title = raw.title || '';
-  const recapRaw = raw.weeklyRecap as WeeklyRecap | undefined;
+  const recapRaw = (raw.recap || raw.weeklyRecap) as Recap | undefined;
   const recap = recapRaw
     ? { ...emptyRecap(title), title: recapRaw.title || title, text: recapRaw.text || '', video: recapRaw.video || '' }
     : emptyRecap(title);
 
   return {
     id: raw.id,
+    slug: raw.slug || '',
     title,
+    subtitle: raw.subtitle || raw.biblicalBasis || (raw as { mainScripture?: string }).mainScripture || '',
     description: raw.description || '',
-    biblicalBasis: raw.biblicalBasis || (raw as { mainScripture?: string }).mainScripture || '',
-    weeklyMessage: raw.weeklyMessage || (raw as { weeklyTagline?: string }).weeklyTagline || '',
+    biblicalBasis: raw.subtitle || raw.biblicalBasis || (raw as { mainScripture?: string }).mainScripture || '',
+    weeklySentence: raw.weeklySentence || raw.weeklyMessage || (raw as { weeklyTagline?: string }).weeklyTagline || '',
+    weeklyMessage: raw.weeklySentence || raw.weeklyMessage || (raw as { weeklyTagline?: string }).weeklyTagline || '',
     coverImage: raw.coverImage || '',
     startDate: raw.startDate || new Date().toISOString().split('T')[0],
     releaseMode: raw.releaseMode === 'all' ? 'all' : 'daily',
     status: raw.status || 'draft',
+    recap,
     weeklyRecap: recap,
     episodes: episodes.slice(0, 7),
     heroImage: raw.heroImage || raw.coverImage || episodes[0]?.image || '',
@@ -133,7 +147,9 @@ export function normalizeSeries(raw: Partial<Series> & { id: string }): Series {
     startDateWeekday: raw.startDateWeekday,
     startDateWarning: raw.startDateWarning,
     schedulePhase: raw.schedulePhase,
+    computedStatus: raw.computedStatus,
     displayPhase: raw.displayPhase,
+    recapHasUpload: raw.recapHasUpload,
     isComplete: raw.isComplete,
     showAllEpisodes: raw.showAllEpisodes,
   };
@@ -204,11 +220,21 @@ export const SCHEDULE_PHASE_LABELS: Record<SchedulePhase, string> = {
   always: 'Nyitó sorozat',
 };
 
-export interface CurrentResponse {
+export const COMPUTED_STATUS_LABELS: Record<ComputedSeriesStatus, string> = {
+  draft: 'Vázlat',
+  upcoming: 'Következő',
+  current: 'Aktuális',
+  archived: 'Archív',
+};
+
+export interface HomeResponse {
   phase: CurrentPhase;
   series: Series | null;
   message?: string;
+  archivedSeries: Series[];
 }
+
+export type CurrentResponse = HomeResponse;
 
 export const EMPTY_SERIES_MESSAGE = 'A következő sorozat hamarosan érkezik.';
 
@@ -241,7 +267,7 @@ async function readApiError(res: Response): Promise<string> {
   }
 }
 
-export async function fetchCurrent(): Promise<CurrentResponse> {
+export async function fetchCurrent(): Promise<HomeResponse> {
   const res = await fetch('/api/current');
   if (!res.ok) throw new Error('Hiba a betöltés során');
   const data = await res.json();
@@ -250,17 +276,27 @@ export async function fetchCurrent(): Promise<CurrentResponse> {
       phase: 'empty',
       series: null,
       message: data?.message || EMPTY_SERIES_MESSAGE,
+      archivedSeries: (data?.archivedSeries || []).map(normalizeSeries),
     };
   }
   return {
     phase: data.phase,
     series: data.series ? normalizeSeries(data.series) : null,
     message: data.message || undefined,
+    archivedSeries: (data.archivedSeries || []).map(normalizeSeries),
   };
 }
 
-export async function fetchSeries(id: string): Promise<Series> {
-  const res = await fetch(`/api/series/${id}`);
+export function seriesSlug(series: Pick<Series, 'slug' | 'id'>): string {
+  return series.slug || series.id;
+}
+
+export function seriesUrl(series: Pick<Series, 'slug' | 'id'>, suffix = ''): string {
+  return `/series/${seriesSlug(series)}${suffix}`;
+}
+
+export async function fetchSeries(ref: string): Promise<Series> {
+  const res = await fetch(`/api/series/${ref}`);
   if (!res.ok) throw new Error('Sorozat nem található');
   return normalizeSeries(await res.json());
 }

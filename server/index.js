@@ -12,8 +12,10 @@ import {
   getNextMonday,
   validateStartDate,
   resolveCurrentDisplay,
+  resolveHomeDisplay,
   getPastSeriesCandidates,
-  getSchedulePhase,
+  getComputedStatus,
+  getAdminComputedStatus,
 } from './publish.js';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -107,10 +109,15 @@ function readData() {
     writeData(seed);
     return seed;
   }
-  return JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
+  const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
+  data.series = (data.series || []).map((s) => migrateSeries({ ...s }));
+  assignSlugs(data);
+  return data;
 }
 
 function writeData(data) {
+  assignSlugs(data);
+  data.series = data.series.map((s) => migrateSeries({ ...s }));
   fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
 }
 
@@ -223,14 +230,57 @@ function deleteFile(filePath) {
   if (fs.existsSync(full)) fs.unlinkSync(full);
 }
 
+function slugify(title) {
+  const map = {
+    á: 'a', à: 'a', ä: 'a', é: 'e', è: 'e', ë: 'e', í: 'i', ó: 'o', ö: 'o', ő: 'o',
+    ú: 'u', ü: 'u', ű: 'u', Á: 'a', É: 'e', Í: 'i', Ó: 'o', Ö: 'o', Ő: 'o', Ú: 'u', Ü: 'u', Ű: 'u',
+  };
+  const raw = (title || 'sorozat')
+    .trim()
+    .split('')
+    .map((c) => map[c] || c)
+    .join('')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  return raw.replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 80) || 'sorozat';
+}
+
+function assignSlugs(data) {
+  const used = new Set();
+  for (const series of data.series) {
+    if (series.slug && !used.has(series.slug)) {
+      used.add(series.slug);
+      continue;
+    }
+    let base = slugify(series.title);
+    let slug = base;
+    let n = 2;
+    while (used.has(slug)) slug = `${base}-${n++}`;
+    series.slug = slug;
+    used.add(slug);
+  }
+}
+
+function findSeriesByRef(data, ref) {
+  return data.series.find((s) => s.slug === ref) || data.series.find((s) => s.id === ref);
+}
+
 function migrateSeries(series) {
-  series.biblicalBasis = series.biblicalBasis || series.mainScripture || '';
-  series.weeklyMessage = series.weeklyMessage || series.weeklyTagline || '';
+  series.subtitle = series.subtitle || series.biblicalBasis || series.mainScripture || '';
+  series.weeklySentence = series.weeklySentence || series.weeklyMessage || series.weeklyTagline || '';
+  series.weeklyMessage = series.weeklySentence;
+  series.biblicalBasis = series.subtitle;
   series.coverImage = series.coverImage || '';
+  series.heroImage = series.heroImage || '';
   delete series.mainScripture;
   delete series.weeklyTagline;
   delete series.coverAnimation;
   delete series.weeklyVideoNarration;
+
+  const recapSrc = series.recap || series.weeklyRecap;
+  series.recap = { ...emptyRecap(), ...(recapSrc || {}), video: recapSrc?.video || '' };
+  series.weeklyRecap = series.recap;
 
   if (!['draft', 'active', 'archived'].includes(series.status)) {
     series.status = series.status === 'archived' ? 'archived' : 'active';
@@ -238,12 +288,6 @@ function migrateSeries(series) {
 
   if (!['all', 'daily'].includes(series.releaseMode)) {
     series.releaseMode = 'daily';
-  }
-
-  if (!series.weeklyRecap || typeof series.weeklyRecap !== 'object') {
-    series.weeklyRecap = emptyRecap();
-  } else {
-    series.weeklyRecap = { ...emptyRecap(), ...series.weeklyRecap, video: series.weeklyRecap.video || '' };
   }
 
   series.episodes = (series.episodes || []).map((ep, i) => {
@@ -300,8 +344,7 @@ app.put('/api/admin/config', (req, res) => {
 
 app.get('/api/current', (_req, res) => {
   const data = readData();
-  const list = data.series.map((s) => migrateSeries({ ...s }));
-  res.json(resolveCurrentDisplay(list, enrichOpts()));
+  res.json(resolveHomeDisplay(data.series, enrichOpts()));
 });
 
 app.get('/api/series', (_req, res) => {
@@ -314,10 +357,11 @@ app.get('/api/series', (_req, res) => {
   );
 });
 
-app.get('/api/series/:id', (req, res) => {
+app.get('/api/series/:ref', (req, res) => {
   const data = readData();
-  const series = data.series.find((s) => s.id === req.params.id);
+  const series = findSeriesByRef(data, req.params.ref);
   if (!series) return res.status(404).json({ error: 'Sorozat nem található' });
+  if (series.status === 'draft') return res.status(404).json({ error: 'Sorozat nem található' });
   res.json(toPublic(series));
 });
 
@@ -344,7 +388,7 @@ app.post(
   withUpload(imageUpload.single('coverImage')),
   (req, res) => {
     const data = readData();
-    const { title, description, biblicalBasis, weeklyMessage, startDate, status, releaseMode } = req.body;
+    const { title, description, biblicalBasis, weeklyMessage, startDate, status, releaseMode, subtitle, weeklySentence, slug } = req.body;
     if (!title?.trim()) return res.status(400).json({ error: 'A cím kötelező' });
 
     const newStatus = status || 'draft';
@@ -356,9 +400,12 @@ app.post(
     const newSeries = migrateSeries({
       id: uuidv4(),
       title: title.trim(),
+      subtitle: (subtitle || biblicalBasis || '').trim(),
       description: (description || '').trim(),
-      biblicalBasis: (biblicalBasis || '').trim(),
-      weeklyMessage: (weeklyMessage || '').trim(),
+      biblicalBasis: (subtitle || biblicalBasis || '').trim(),
+      weeklySentence: (weeklySentence || weeklyMessage || '').trim(),
+      weeklyMessage: (weeklySentence || weeklyMessage || '').trim(),
+      slug: slug?.trim() || '',
       coverImage: req.file ? `/uploads/${req.file.filename}` : '',
       startDate: resolvedStart,
       releaseMode: mode,
@@ -382,12 +429,17 @@ app.put(
     if (idx === -1) return res.status(404).json({ error: 'Sorozat nem található' });
 
     const series = migrateSeries(data.series[idx]);
-    const { title, description, biblicalBasis, weeklyMessage, startDate, status, releaseMode, removeCover } = req.body;
+    const { title, description, biblicalBasis, weeklyMessage, startDate, status, releaseMode, removeCover, subtitle, weeklySentence, slug } = req.body;
 
     if (title !== undefined) series.title = title.trim();
+    if (subtitle !== undefined) series.subtitle = subtitle.trim();
+    if (biblicalBasis !== undefined) series.subtitle = biblicalBasis.trim();
     if (description !== undefined) series.description = description.trim();
-    if (biblicalBasis !== undefined) series.biblicalBasis = biblicalBasis.trim();
-    if (weeklyMessage !== undefined) series.weeklyMessage = weeklyMessage.trim();
+    if (weeklySentence !== undefined) series.weeklySentence = weeklySentence.trim();
+    if (weeklyMessage !== undefined) series.weeklySentence = weeklyMessage.trim();
+    series.biblicalBasis = series.subtitle;
+    series.weeklyMessage = series.weeklySentence;
+    if (slug !== undefined && slug.trim()) series.slug = slug.trim();
     if (startDate !== undefined) series.startDate = startDate;
     if (releaseMode !== undefined && ['all', 'daily'].includes(releaseMode)) {
       series.releaseMode = releaseMode;

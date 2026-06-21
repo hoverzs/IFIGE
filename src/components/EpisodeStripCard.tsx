@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { Episode, Series } from '../api';
+import { seriesUrl } from '../api';
 import { EpisodeThumbnail } from './EpisodeMedia';
 
 interface Props {
@@ -69,7 +70,7 @@ export default function EpisodeStripCard({ series, episode }: Props) {
   if (isLocked) return card;
 
   return (
-    <Link to={`/series/${series.id}/episode/${episode.day}`}>
+    <Link to={seriesUrl(series, `/episode/${episode.day}`)}>
       {card}
     </Link>
   );

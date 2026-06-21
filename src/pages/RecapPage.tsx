@@ -5,14 +5,14 @@ import type { Series } from '../api';
 import LiveImage from '../components/LiveImage';
 
 export default function RecapPage() {
-  const { id } = useParams<{ id: string }>();
+  const { slug } = useParams<{ slug: string }>();
   const [series, setSeries] = useState<Series | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!id) return;
-    fetchSeries(id).then(setSeries).catch(console.error).finally(() => setLoading(false));
-  }, [id]);
+    if (!slug) return;
+    fetchSeries(slug).then(setSeries).catch(console.error).finally(() => setLoading(false));
+  }, [slug]);
 
   if (loading) return <Spinner />;
 
@@ -39,7 +39,7 @@ export default function RecapPage() {
     );
   }
 
-  const recap = series.weeklyRecap;
+  const recap = series.recap || series.weeklyRecap;
   const recapIncomplete = recap.contentStatus && recap.contentStatus !== 'complete';
 
   if (recapIncomplete) {

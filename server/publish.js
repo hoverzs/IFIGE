@@ -103,48 +103,68 @@ export function validateStartDate(dateStr) {
   return { ok: true, isMonday: true, weekday, message: '' };
 }
 
-/** draft | archived | upcoming | current | past | always (releaseMode: all) */
-export function getSchedulePhase(series, now = new Date()) {
-  if (series.status === 'draft') return 'draft';
-  if (series.status === 'archived') return 'archived';
-  if (series.releaseMode === 'all') return 'always';
+/** Publikus életciklus — csak ütemezett (active) sorozatnál */
+export function getComputedStatus(series, now = new Date()) {
+  if (series.status !== 'active') return null;
+  if (series.releaseMode === 'all') return 'archived';
   const dayIndex = getDayIndex(series.startDate, now);
   if (dayIndex < 1) return 'upcoming';
-  if (dayIndex <= 7) return 'current';
-  return 'past';
+  if (isRecapAvailable(series.startDate, now) || dayIndex > 7) return 'archived';
+  return 'current';
 }
 
-export function findCurrentWeekSeries(seriesList, now = new Date()) {
+/** Admin megjelenítéshez */
+export function getAdminComputedStatus(series, now = new Date()) {
+  if (series.status === 'draft') return 'draft';
+  if (series.status === 'archived') return 'archived';
+  return getComputedStatus(series, now);
+}
+
+/** @deprecated — használd getComputedStatus / getAdminComputedStatus */
+export function getSchedulePhase(series, now = new Date()) {
+  const cs = getAdminComputedStatus(series, now);
+  if (cs === 'draft') return 'draft';
+  if (cs === 'archived' && series.status === 'archived') return 'archived';
+  if (series.releaseMode === 'all') return 'always';
+  if (cs === 'upcoming') return 'upcoming';
+  if (cs === 'current') return 'current';
+  if (cs === 'archived') return 'past';
+  return 'draft';
+}
+
+export function findCurrentSeries(seriesList, now = new Date()) {
   return (
     seriesList
-      .filter((s) => s.status === 'active' && s.releaseMode === 'daily')
-      .map((s) => ({ series: s, dayIndex: getDayIndex(s.startDate, now) }))
-      .filter(({ dayIndex }) => dayIndex >= 1 && dayIndex <= 7)
-      .sort((a, b) => b.series.startDate.localeCompare(a.series.startDate))[0]?.series ?? null
+      .filter((s) => getComputedStatus(s, now) === 'current')
+      .sort((a, b) => b.startDate.localeCompare(a.startDate))[0] ?? null
   );
 }
 
 export function findUpcomingSeries(seriesList, now = new Date()) {
   return (
     seriesList
-      .filter((s) => s.status === 'active' && s.releaseMode === 'daily')
-      .map((s) => ({ series: s, dayIndex: getDayIndex(s.startDate, now) }))
-      .filter(({ dayIndex }) => dayIndex < 1)
-      .sort((a, b) => a.series.startDate.localeCompare(b.series.startDate))[0]?.series ?? null
+      .filter((s) => getComputedStatus(s, now) === 'upcoming')
+      .sort((a, b) => a.startDate.localeCompare(b.startDate))[0] ?? null
   );
 }
 
+export function getArchivedSeries(seriesList, now = new Date()) {
+  return seriesList
+    .filter((s) => getComputedStatus(s, now) === 'archived')
+    .sort((a, b) => new Date(b.startDate) - new Date(a.startDate));
+}
+
+/** @deprecated */
+export function findCurrentWeekSeries(seriesList, now = new Date()) {
+  return findCurrentSeries(seriesList, now);
+}
+
 export function findFallbackAllSeries(seriesList) {
-  return seriesList.find((s) => s.status === 'active' && s.releaseMode === 'all') ?? null;
+  return null;
 }
 
 export function getPastSeriesCandidates(seriesList, now = new Date()) {
-  return seriesList.filter((s) => {
-    if (s.status === 'archived') return true;
-    if (s.status !== 'active') return false;
-    if (s.releaseMode === 'all') return true;
-    return getDayIndex(s.startDate, now) > 7;
-  });
+  return getArchivedSeries(seriesList, now);
 }
 
 const EMPTY_MESSAGE = 'A következő sorozat hamarosan érkezik.';
@@ -157,12 +177,12 @@ export function resolveCurrentDisplay(seriesList, opts = {}) {
   const now = opts.now || new Date();
   const enrichOne = (series, displayPhase) => {
     const enriched = enrichSeries(series, opts);
-    enriched.schedulePhase = getSchedulePhase(series, now);
+    enriched.computedStatus = getComputedStatus(series, now) || displayPhase;
     enriched.displayPhase = displayPhase;
     return sanitizeForPublic(enriched);
   };
 
-  const current = findCurrentWeekSeries(seriesList, now);
+  const current = findCurrentSeries(seriesList, now);
   if (current) {
     return { phase: 'current', series: enrichOne(current, 'current'), message: '' };
   }
@@ -172,12 +192,22 @@ export function resolveCurrentDisplay(seriesList, opts = {}) {
     return { phase: 'upcoming', series: enrichOne(upcoming, 'upcoming'), message: '' };
   }
 
-  const fallback = findFallbackAllSeries(seriesList);
-  if (fallback) {
-    return { phase: 'current', series: enrichOne(fallback, 'current'), message: '' };
-  }
-
   return { phase: 'empty', series: null, message: EMPTY_MESSAGE };
+}
+
+/** Főoldal: aktuális + archivált sorozatok */
+export function resolveHomeDisplay(seriesList, opts = {}) {
+  const now = opts.now || new Date();
+  const base = resolveCurrentDisplay(seriesList, opts);
+  const featuredId = base.series?.id;
+  const archivedSeries = getArchivedSeries(seriesList, now)
+    .filter((s) => s.id !== featuredId)
+    .map((s) => {
+      const enriched = enrichSeries(s, opts);
+      enriched.computedStatus = 'archived';
+      return sanitizeForPublic(enriched);
+    });
+  return { ...base, archivedSeries };
 }
 
 export function getEpisodeContentStatus(ep) {
@@ -222,6 +252,31 @@ function unlockAllForTest(s, resolveHeroImage) {
   };
 }
 
+function buildUnlockedSeries(s, now, resolveHeroImage, computedStatus) {
+  const hero = s.heroImage || resolveHeroImage(s, 1);
+  return {
+    ...s,
+    heroImage: hero,
+    currentDay: 7,
+    totalDays: 7,
+    dayIndex: getDayIndex(s.startDate, now),
+    schedulePhase: computedStatus,
+    computedStatus,
+    episodes: s.episodes.map((ep) => ({
+      ...ep,
+      status: 'available',
+      publishDate: getEpisodePublishDate(s.startDate, ep.day),
+      weekdayLabel: WEEKDAY_LABELS[ep.day - 1],
+      contentStatus: getEpisodeContentStatus(ep),
+    })),
+    recapStatus: 'available',
+    recapPublishDate: getRecapPublishInfo(s.startDate).publishDate,
+    recapPublishTime: '16:00',
+    isComplete: true,
+    showAllEpisodes: false,
+  };
+}
+
 /**
  * @param {object} series — migrateSeries után
  * @param {{ showAllEpisodes?: boolean, now?: Date, resolveHeroImage?: Function }} opts
@@ -230,15 +285,17 @@ export function enrichSeries(series, opts = {}) {
   const { showAllEpisodes = false, now = new Date(), resolveHeroImage = () => '' } = opts;
   const s = { ...series };
   const dayIndex = getDayIndex(s.startDate, now);
+  const computedStatus = getComputedStatus(s, now);
 
   if (s.status === 'draft') {
     return {
       ...s,
-      heroImage: resolveHeroImage(s, 1),
+      heroImage: s.heroImage || resolveHeroImage(s, 1),
       currentDay: 0,
       totalDays: 7,
       dayIndex,
-      schedulePhase: getSchedulePhase(s, now),
+      schedulePhase: 'draft',
+      computedStatus: null,
       episodes: s.episodes.map((ep) => ({
         ...ep,
         status: 'locked',
@@ -257,39 +314,21 @@ export function enrichSeries(series, opts = {}) {
     return unlockAllForTest(s, resolveHeroImage);
   }
 
-  if (s.releaseMode === 'all') {
-    return {
-      ...s,
-      heroImage: resolveHeroImage(s, 1),
-      currentDay: 7,
-      totalDays: 7,
-      dayIndex,
-      schedulePhase: getSchedulePhase(s, now),
-      episodes: s.episodes.map((ep) => ({
-        ...ep,
-        status: 'available',
-        publishDate: getEpisodePublishDate(s.startDate, ep.day),
-        weekdayLabel: WEEKDAY_LABELS[ep.day - 1],
-        contentStatus: getEpisodeContentStatus(ep),
-      })),
-      recapStatus: 'available',
-      recapPublishDate: getRecapPublishInfo(s.startDate).publishDate,
-      isComplete: true,
-      showAllEpisodes: false,
-    };
+  if (computedStatus === 'archived') {
+    return buildUnlockedSeries(s, now, resolveHeroImage, 'archived');
   }
 
-  // daily — hétfőtől vasárnapig
+  // upcoming vagy current (daily)
   const currentDay = dayIndex < 1 ? 0 : Math.min(dayIndex, 7);
-  const schedulePhase = getSchedulePhase(s, now);
 
   return {
     ...s,
-    heroImage: resolveHeroImage(s, currentDay > 0 ? currentDay : 1),
+    heroImage: s.heroImage || resolveHeroImage(s, currentDay > 0 ? currentDay : 1),
     currentDay,
     totalDays: 7,
     dayIndex,
-    schedulePhase,
+    schedulePhase: computedStatus,
+    computedStatus,
     episodes: s.episodes.map((ep) => ({
       ...ep,
       status: computeEpisodeStatus(ep.day, dayIndex),
@@ -300,17 +339,19 @@ export function enrichSeries(series, opts = {}) {
     recapStatus: isRecapAvailable(s.startDate, now) ? 'available' : 'locked',
     recapPublishDate: getRecapPublishInfo(s.startDate).publishDate,
     recapPublishTime: '16:00',
-    isComplete: dayIndex > 7,
+    isComplete: false,
     showAllEpisodes: false,
   };
 }
 
 /** Publikus API — locked tartalom kiszűrése */
 export function sanitizeForPublic(enriched) {
+  const weeklyRecap = sanitizeRecapForPublic(enriched);
   return {
     ...enriched,
     episodes: enriched.episodes.map((ep) => sanitizeEpisodeForPublic(ep, enriched.startDate)),
-    weeklyRecap: sanitizeRecapForPublic(enriched),
+    weeklyRecap,
+    recap: weeklyRecap,
   };
 }
 
@@ -356,7 +397,7 @@ function sanitizeEpisodeForPublic(ep, startDate) {
 }
 
 function sanitizeRecapForPublic(enriched) {
-  const recap = enriched.weeklyRecap || { title: '', text: '', video: '' };
+  const recap = enriched.recap || enriched.weeklyRecap || { title: '', text: '', video: '' };
   const recapInfo = getRecapPublishInfo(enriched.startDate);
   if (enriched.recapStatus === 'locked') {
     return {
@@ -399,10 +440,12 @@ export function enrichForAdmin(series, opts = {}) {
   const startDateValidation = validateStartDate(enriched.startDate);
   return {
     ...enriched,
+    recapContentStatus: getRecapContentStatus(enriched.recap || enriched.weeklyRecap),
+    computedStatus: getAdminComputedStatus(series, opts.now || new Date()),
+    recapHasUpload: !!(enriched.recap?.video || enriched.weeklyRecap?.video),
     startDateIsMonday: startDateValidation.isMonday,
     startDateWeekday: startDateValidation.weekday,
     startDateWarning: startDateValidation.ok ? '' : startDateValidation.message,
-    recapContentStatus: getRecapContentStatus(enriched.weeklyRecap),
     recapAdminStatus: getAdminRecapStatus(
       enriched.status,
       enriched.recapStatus,

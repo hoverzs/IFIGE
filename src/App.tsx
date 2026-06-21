@@ -15,11 +15,11 @@ export default function App() {
       <Route path="/" element={<HomePage />} />
       <Route path="/episodes" element={<EpisodesPage />} />
       <Route path="/archive" element={<ArchivePage />} />
-      <Route path="/series/:id" element={<SeriesPage />} />
-      <Route path="/series/:id/episode/:day" element={<EpisodePage />} />
+      <Route path="/series/:slug" element={<SeriesPage />} />
+      <Route path="/series/:slug/episode/:day" element={<EpisodePage />} />
       <Route path="/admin" element={<AdminPage />} />
       <Route path="/admin/new" element={<NewSeriesPage />} />
-      <Route path="/series/:id/recap" element={<RecapPage />} />
+      <Route path="/series/:slug/recap" element={<RecapPage />} />
       <Route path="/admin/series/:id" element={<EditSeriesPage />} />
     </Routes>
   );

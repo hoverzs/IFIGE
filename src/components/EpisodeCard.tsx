@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import type { Episode, Series } from '../api';
-import { placeholderCover } from '../api';
+import { mediaUrl, placeholderCover, seriesUrl } from '../api';
 import { EpisodeThumbnail } from './EpisodeMedia';
 
 interface Props {
@@ -53,34 +53,39 @@ export default function EpisodeCard({ series, episode }: Props) {
   if (isLocked) return cardContent;
 
   return (
-    <Link to={`/series/${series.id}/episode/${episode.day}`}>
+    <Link to={seriesUrl(series, `/episode/${episode.day}`)}>
       {cardContent}
     </Link>
   );
 }
 
-export function SeriesCard({ series }: { series: Series }) {
+export function SeriesCard({ series, badge }: { series: Series; badge?: string }) {
+  const image = series.coverImage || series.heroImage || series.episodes[0]?.image;
   return (
     <Link
-      to={`/series/${series.id}`}
+      to={seriesUrl(series)}
       className="flex-shrink-0 w-36 sm:w-44 group active:scale-[0.97] transition-transform"
     >
       <div className="relative rounded-xl overflow-hidden aspect-[2/3] glow-accent">
         <img
-          src={
-            series.coverImage
-              ? mediaUrl(series.coverImage)
-              : placeholderCover(series.title)
-          }
+          src={image ? mediaUrl(image) : placeholderCover(series.title)}
           alt={series.title}
           className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
           loading="lazy"
         />
         <div className="absolute inset-0 gradient-card" />
+        {badge && (
+          <span className="absolute top-2 left-2 text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-accent/90 text-white">
+            {badge}
+          </span>
+        )}
         <div className="absolute bottom-0 inset-x-0 p-3">
           <h3 className="text-sm font-bold leading-tight line-clamp-2">
             {series.title}
           </h3>
+          {series.subtitle && (
+            <p className="text-[10px] text-text-muted mt-1 line-clamp-2">{series.subtitle}</p>
+          )}
         </div>
       </div>
     </Link>

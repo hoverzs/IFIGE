@@ -1,22 +1,22 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { fetchSeries, getEpisodePublicMessage } from '../api';
+import { fetchSeries, getEpisodePublicMessage, seriesUrl } from '../api';
 import type { Episode, Series } from '../api';
 import EpisodeMedia from '../components/EpisodeMedia';
 
 export default function EpisodePage() {
-  const { id, day } = useParams<{ id: string; day: string }>();
+  const { slug, day } = useParams<{ slug: string; day: string }>();
   const [series, setSeries] = useState<Series | null>(null);
   const [episode, setEpisode] = useState<Episode | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!id) return;
-    fetchSeries(id).then((s) => {
+    if (!slug) return;
+    fetchSeries(slug).then((s) => {
       setSeries(s);
       setEpisode(s.episodes.find((e) => e.day === parseInt(day || '1', 10)) || null);
     }).catch(console.error).finally(() => setLoading(false));
-  }, [id, day]);
+  }, [slug, day]);
 
   if (loading) return <Spinner />;
 
@@ -114,8 +114,8 @@ export default function EpisodePage() {
         )}
 
         <nav className="flex justify-between pt-6 border-t border-border">
-          {prevDay ? <Link to={`/series/${series.id}/episode/${prevDay}`} className="text-sm text-text-muted hover:text-accent">← Előző</Link> : <span />}
-          {nextDay ? <Link to={`/series/${series.id}/episode/${nextDay}`} className="text-sm font-semibold text-accent">Következő →</Link> : <span />}
+          {prevDay ? <Link to={seriesUrl(series, `/episode/${prevDay}`)} className="text-sm text-text-muted hover:text-accent">← Előző</Link> : <span />}
+          {nextDay ? <Link to={seriesUrl(series, `/episode/${nextDay}`)} className="text-sm font-semibold text-accent">Következő →</Link> : <span />}
         </nav>
       </article>
     </div>

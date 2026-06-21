@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
-import { fetchCurrent, EMPTY_SERIES_MESSAGE } from '../api';
-import type { CurrentResponse, Series } from '../api';
+import { fetchCurrent, EMPTY_SERIES_MESSAGE, seriesUrl } from '../api';
+import type { HomeResponse, Series } from '../api';
 import Button from '../components/Button';
 import Header from '../components/Header';
 import BottomNav from '../components/BottomNav';
 import EpisodeStripCard from '../components/EpisodeStripCard';
 import WeeklyFinaleSection from '../components/WeeklyFinaleSection';
 import SeriesHeroImage from '../components/SeriesHeroImage';
+import { SeriesCard } from '../components/EpisodeCard';
 
 function getFeaturedEpisode(series: Series) {
   return (
@@ -21,12 +22,31 @@ function getEpisodeProgress(series: Series) {
   return Math.round((unlocked / 7) * 100);
 }
 
+function ArchivedSection({ seriesList }: { seriesList: Series[] }) {
+  if (!seriesList.length) return null;
+  return (
+    <section className="mt-12 sm:mt-14">
+      <div className="px-5 mb-3">
+        <h2 className="text-base font-bold">Korábbi sorozatok</h2>
+        <p className="text-xs text-text-muted">Bármikor visszanézheted a lezárt heteket</p>
+      </div>
+      <div className="flex gap-3 overflow-x-auto scrollbar-hide px-5 pb-2 snap-x">
+        {seriesList.map((s) => (
+          <div key={s.id} className="snap-start">
+            <SeriesCard series={s} />
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default function HomePage() {
-  const [current, setCurrent] = useState<CurrentResponse | null>(null);
+  const [home, setHome] = useState<HomeResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchCurrent().then(setCurrent).catch(console.error).finally(() => setLoading(false));
+    fetchCurrent().then(setHome).catch(console.error).finally(() => setLoading(false));
   }, []);
 
   if (loading) {
@@ -37,32 +57,33 @@ export default function HomePage() {
     );
   }
 
-  if (!current?.series || current.phase === 'empty') {
+  const archived = home?.archivedSeries || [];
+
+  if (!home?.series || home.phase === 'empty') {
     return (
       <div className="min-h-dvh pb-24 bg-bg">
         <Header />
-        <div className="flex flex-col items-center justify-center min-h-[50dvh] px-6 text-center">
+        <div className="flex flex-col items-center justify-center min-h-[40dvh] px-6 text-center">
           <p className="text-text-muted text-base max-w-sm leading-relaxed">
-            {current?.message || EMPTY_SERIES_MESSAGE}
+            {home?.message || EMPTY_SERIES_MESSAGE}
           </p>
         </div>
+        <ArchivedSection seriesList={archived} />
         <BottomNav />
       </div>
     );
   }
 
-  const series = current.series;
-  const isUpcoming = current.phase === 'upcoming';
+  const series = home.series;
+  const isUpcoming = home.phase === 'upcoming';
   const featuredEpisode = getFeaturedEpisode(series);
-  const heroImage = series.episodes[0]?.image || series.coverImage || series.heroImage;
+  const heroImage = series.heroImage || series.coverImage || series.episodes[0]?.image;
   const unlockedCount = series.episodes.filter((e) => e.status !== 'locked').length;
   const statusLabel = isUpcoming
     ? `Következő sorozat · ${series.startDate}`
     : series.showAllEpisodes
       ? 'Teszt mód · mind a 7 epizód elérhető'
-      : series.releaseMode === 'all'
-        ? `${unlockedCount}/${series.totalDays} · Minden epizód elérhető`
-        : `${series.currentDay}/${series.totalDays} · Heti sorozat`;
+      : `${series.currentDay}/${series.totalDays} · Heti sorozat`;
 
   return (
     <div className="min-h-dvh pb-24 bg-bg">
@@ -84,13 +105,11 @@ export default function HomePage() {
             <span className="text-[11px] font-bold uppercase tracking-[0.15em] text-accent mb-3">
               {statusLabel}
             </span>
-            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black leading-[1.05] mb-3 drop-shadow-2xl tracking-tight">
+            <h1 className="text-3xl sm:text-5xl lg:text-6xl font-black leading-[1.05] mb-2 drop-shadow-2xl tracking-tight">
               {series.title}
             </h1>
-            {(series.biblicalBasis || series.description) && (
-              <p className="text-text/90 text-sm sm:text-base mb-3 max-w-xl line-clamp-2 leading-relaxed">
-                {series.biblicalBasis || series.description}
-              </p>
+            {series.subtitle && (
+              <p className="text-text/80 text-sm sm:text-base mb-3 max-w-xl">{series.subtitle}</p>
             )}
             {!isUpcoming && featuredEpisode && (
               <p className="text-white/90 text-sm sm:text-base font-medium mb-5">
@@ -101,23 +120,28 @@ export default function HomePage() {
 
             {!isUpcoming && featuredEpisode && featuredEpisode.status !== 'locked' && (
               <Button
-                to={`/series/${series.id}/episode/${featuredEpisode.day}`}
+                to={seriesUrl(series, `/episode/${featuredEpisode.day}`)}
                 className="w-full sm:w-auto max-w-[280px]"
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
                 {featuredEpisode.status === 'current' ? 'Mai epizód megnyitása' : 'Epizód megnyitása'}
               </Button>
             )}
+            {!isUpcoming && (
+              <Button to={seriesUrl(series)} variant="ghost" className="w-full sm:w-auto max-w-[280px] mt-3 !text-sm">
+                Sorozat megnyitása
+              </Button>
+            )}
           </div>
         </div>
       </section>
 
-      {series.weeklyMessage && (
+      {(series.weeklySentence || series.weeklyMessage) && (
         <section className="w-[88%] sm:w-[90%] max-w-[1500px] mx-auto mt-8 sm:mt-10 px-1">
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-accent mb-3">A hét mondata</p>
           <blockquote className="border-l-2 border-accent/60 pl-5 sm:pl-6">
             <p className="text-base sm:text-lg italic text-text/90 leading-relaxed max-w-2xl">
-              „{series.weeklyMessage}"
+              „{series.weeklySentence || series.weeklyMessage}"
             </p>
           </blockquote>
         </section>
@@ -150,6 +174,8 @@ export default function HomePage() {
       </section>
 
       {!isUpcoming && <WeeklyFinaleSection series={series} />}
+
+      <ArchivedSection seriesList={archived} />
 
       <BottomNav />
     </div>
