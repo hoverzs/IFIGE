@@ -218,6 +218,7 @@ select.input {
   height: 100%;
   background: var(--color-bg-card);
   isolation: isolate;
+  contain: paint;
 }
 
 .live-image__img {
@@ -240,8 +241,9 @@ select.input {
   animation: cinematicDrift var(--live-drift-duration) ease-in-out infinite;
 }
 
-/* 2. Epizódoldal — lassú push előre */
+/* 2. Epizódoldal — lassú push előre (mindig 1.06+ scale, hogy ne látszódjon a háttér) */
 .live-image__img--slow-push {
+  transform: scale(1.08);
   animation: slowPush var(--live-push-duration) ease-in-out infinite alternate;
 }
 
@@ -302,10 +304,10 @@ select.input {
 
 @keyframes slowPush {
   0% {
-    transform: scale(1.02) translate3d(0, 0, 0);
+    transform: scale(1.06) translate3d(0, 0, 0);
   }
   100% {
-    transform: scale(1.12) translate3d(0, -1%, 0);
+    transform: scale(1.12) translate3d(0, -0.5%, 0);
   }
 }
 

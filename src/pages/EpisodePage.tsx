@@ -69,14 +69,14 @@ export default function EpisodePage() {
         </div>
       </div>
 
-      <div className="relative w-full aspect-[4/5] sm:aspect-[16/10] max-h-[65dvh] bg-black overflow-hidden">
+      <div className="relative w-full aspect-[4/5] sm:aspect-[16/10] max-h-[65dvh] bg-black overflow-hidden isolate">
         <EpisodeMedia
           episode={episode}
           variant="slowPush"
-          containerClassName="absolute inset-0"
-          className="h-full"
+          containerClassName="absolute inset-0 overflow-hidden"
+          className="h-full w-full object-cover object-center"
         />
-        <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-bg to-transparent pointer-events-none" />
+        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-bg via-bg/80 to-transparent pointer-events-none z-10" />
       </div>
 
       <article className="px-5 py-8 max-w-[680px] mx-auto space-y-8 animate-fade-in-up">
