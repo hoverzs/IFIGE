@@ -49,10 +49,11 @@ function copyDirContents(srcDir, destDir, { overwrite = false } = {}) {
 }
 
 function isEmptySeedData(data) {
-  const series = data?.series?.[0];
-  if (!series) return true;
-  if (series.title === 'Amikor megtagadsz') return true;
-  return !series.episodes?.some((ep) => ep.image);
+  const list = data?.series || [];
+  if (list.length === 0) return true;
+  // Csak az eredeti üres placeholder — ne írjuk felül a felhasználói tartalmat kép hiánya miatt.
+  if (list.length === 1 && list[0].title === 'Amikor megtagadsz') return true;
+  return false;
 }
 
 function bootstrapFromSeed() {
@@ -75,7 +76,7 @@ function bootstrapFromSeed() {
 
   if (importData) {
     copyDirContents(seedDataDir, DATA_DIR, { overwrite: true });
-    console.log('[IFIge] Seed sorozat betöltve →', DATA_DIR);
+    console.warn('[IFIge] Seed sorozat betöltve (felülírás) →', DATA_DIR, force ? '(FORCE_SEED)' : '(üres adat)');
   }
 
   if (fs.existsSync(seedUploadsDir)) {
@@ -327,7 +328,21 @@ app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(UPLOADS_DIR));
 
-app.get('/api/health', (_req, res) => res.json({ ok: true }));
+app.get('/api/health', (_req, res) => {
+  let seriesCount = 0;
+  try {
+    seriesCount = readData().series?.length || 0;
+  } catch {
+    seriesCount = -1;
+  }
+  res.json({
+    ok: true,
+    dataDir: DATA_DIR,
+    uploadsDir: UPLOADS_DIR,
+    seriesCount,
+    persistent: DATA_DIR.startsWith('/data'),
+  });
+});
 
 app.get('/api/admin/config', (_req, res) => {
   res.json(readConfig());
