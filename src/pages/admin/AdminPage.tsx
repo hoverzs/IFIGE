@@ -2,29 +2,47 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   deleteSeries,
+  downloadAdminBackup,
   fetchAllSeries,
+  fetchHealth,
   getEpisodeEditStatus,
   mediaUrl,
   placeholderCover,
   SERIES_STATUS_LABELS,
   COMPUTED_STATUS_LABELS,
 } from '../../api';
-import type { Series } from '../../api';
+import type { HealthResponse, Series } from '../../api';
 import Button from '../../components/Button';
 
 export default function AdminPage() {
   const [seriesList, setSeriesList] = useState<Series[]>([]);
   const [loading, setLoading] = useState(true);
+  const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [backupBusy, setBackupBusy] = useState(false);
 
   const load = () => {
     setLoading(true);
-    fetchAllSeries()
-      .then(setSeriesList)
+    Promise.all([fetchAllSeries(), fetchHealth()])
+      .then(([series, h]) => {
+        setSeriesList(series);
+        setHealth(h);
+      })
       .catch(console.error)
       .finally(() => setLoading(false));
   };
 
   useEffect(load, []);
+
+  const handleBackup = async () => {
+    setBackupBusy(true);
+    try {
+      await downloadAdminBackup();
+    } catch (err) {
+      alert(err instanceof Error ? err.message : 'Mentés letöltési hiba');
+    } finally {
+      setBackupBusy(false);
+    }
+  };
 
   const handleDelete = async (e: React.MouseEvent, series: Series) => {
     e.preventDefault();
@@ -55,9 +73,26 @@ export default function AdminPage() {
       </header>
 
       <main className="px-5 py-6 max-w-2xl mx-auto">
-        <p className="text-text-muted text-sm mb-6">
-          Több heti sorozat is feltölthető előre. Az „Ütemezve” státuszú sorozatok a startDate alapján automatikusan jelennek meg.
-        </p>
+        {health && !health.persistent && (
+          <div className="mb-6 rounded-xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm leading-relaxed">
+            <p className="font-bold text-accent mb-1">Az adatok nem maradnak meg automatikusan</p>
+            <p className="text-text/90">
+              Minden Railway redeploy törli a sorozatokat és képeket, amíg nincs Volume beállítva.
+              Add hozzá: mount <code className="text-xs">/data</code>, majd{' '}
+              <code className="text-xs">DATA_DIR=/data/data</code> és{' '}
+              <code className="text-xs">UPLOADS_DIR=/data/uploads</code>.
+            </p>
+          </div>
+        )}
+
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+          <p className="text-text-muted text-sm flex-1 min-w-[200px]">
+            Több heti sorozat is feltölthető előre. Az „Ütemezve” státuszú sorozatok a startDate alapján automatikusan jelennek meg.
+          </p>
+          <Button onClick={handleBackup} disabled={backupBusy} variant="ghost" className="!px-3 !py-2 !text-xs shrink-0">
+            {backupBusy ? 'Letöltés…' : 'Biztonsági mentés'}
+          </Button>
+        </div>
 
         {loading ? (
           <Spinner />

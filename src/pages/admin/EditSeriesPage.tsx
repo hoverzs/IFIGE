@@ -378,7 +378,7 @@ export default function EditSeriesPage() {
 
             onRemove={() => { setCoverFile(null); setCoverPreview(''); setRemoveCover(true); }}
 
-            hint="Ha üres, az 1. epizód képe jelenik meg a főoldalon"
+            hint="Ha be van állítva, ez jelenik meg a főoldalon. Ha üres, az aktuális epizód képe."
 
           />
 

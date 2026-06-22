@@ -133,7 +133,7 @@ export function normalizeSeries(raw: Partial<Series> & { id: string }): Series {
     recap,
     weeklyRecap: recap,
     episodes: episodes.slice(0, 7),
-    heroImage: raw.heroImage || raw.coverImage || episodes[0]?.image || '',
+    heroImage: raw.coverImage || raw.heroImage || episodes[0]?.image || '',
     currentDay: raw.currentDay,
     totalDays: raw.totalDays ?? 7,
     recapStatus: raw.recapStatus,
@@ -332,6 +332,34 @@ export interface AppConfig {
   showAllEpisodes: boolean;
 }
 
+export interface HealthResponse {
+  ok: boolean;
+  dataDir: string;
+  uploadsDir: string;
+  seriesCount: number;
+  persistent: boolean;
+  storageWarning: string | null;
+}
+
+export async function fetchHealth(): Promise<HealthResponse> {
+  const res = await fetch('/api/health');
+  if (!res.ok) throw new Error('Szerver nem elérhető');
+  return res.json();
+}
+
+export async function downloadAdminBackup(): Promise<void> {
+  const res = await fetch('/api/admin/backup');
+  if (!res.ok) throw new Error(await readApiError(res));
+  const blob = await res.blob();
+  const stamp = new Date().toISOString().slice(0, 10);
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `ifige-backup-${stamp}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export async function fetchAppConfig(): Promise<AppConfig> {
   const res = await fetch('/api/admin/config');
   if (!res.ok) throw new Error('Beállítások betöltési hiba');
@@ -390,8 +418,8 @@ export function mediaUrl(path: string): string {
 }
 
 export function heroImageUrl(series: Series): string {
-  if (series.heroImage) return mediaUrl(series.heroImage);
   if (series.coverImage) return mediaUrl(series.coverImage);
+  if (series.heroImage) return mediaUrl(series.heroImage);
   if (series.episodes[0]?.image) return mediaUrl(series.episodes[0].image);
   return placeholderCover(series.title);
 }

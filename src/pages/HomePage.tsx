@@ -78,7 +78,7 @@ export default function HomePage() {
   const isUpcoming = home.phase === 'upcoming';
   const isArchivedFeatured = home.phase === 'archived';
   const featuredEpisode = getFeaturedEpisode(series);
-  const heroImage = series.heroImage || series.coverImage || series.episodes[0]?.image;
+  const heroImage = series.coverImage || series.heroImage || featuredEpisode?.image || series.episodes[0]?.image;
   const unlockedCount = series.episodes.filter((e) => e.status !== 'locked').length;
   const statusLabel = isUpcoming
     ? `Következő sorozat · ${series.startDate}`

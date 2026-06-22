@@ -48,12 +48,10 @@ function copyDirContents(srcDir, destDir, { overwrite = false } = {}) {
   }
 }
 
-function isEmptySeedData(data) {
-  const list = data?.series || [];
-  if (list.length === 0) return true;
-  // Csak az eredeti üres placeholder — ne írjuk felül a felhasználói tartalmat kép hiánya miatt.
-  if (list.length === 1 && list[0].title === 'Amikor megtagadsz') return true;
-  return false;
+function isPersistentStorage() {
+  const dataPath = path.resolve(DATA_DIR);
+  const uploadsPath = path.resolve(UPLOADS_DIR);
+  return dataPath.startsWith('/data') && uploadsPath.startsWith('/data');
 }
 
 function bootstrapFromSeed() {
@@ -63,29 +61,32 @@ function bootstrapFromSeed() {
   if (!fs.existsSync(seedSeriesFile)) return;
 
   const force = process.env.FORCE_SEED === 'true';
-  let importData = !fs.existsSync(DATA_FILE);
-
-  if (!importData && (force || fs.existsSync(DATA_FILE))) {
-    try {
-      const existing = JSON.parse(fs.readFileSync(DATA_FILE, 'utf-8'));
-      if (force || isEmptySeedData(existing)) importData = true;
-    } catch {
-      importData = true;
-    }
-  }
+  // Csak első induláskor vagy kézi FORCE_SEED — soha ne írjuk felül a meglévő tartalmat automatikusan.
+  const importData = !fs.existsSync(DATA_FILE) || force;
 
   if (importData) {
     copyDirContents(seedDataDir, DATA_DIR, { overwrite: true });
-    console.warn('[IFIge] Seed sorozat betöltve (felülírás) →', DATA_DIR, force ? '(FORCE_SEED)' : '(üres adat)');
+    console.warn(
+      '[IFIge] Seed sorozat betöltve →',
+      DATA_DIR,
+      force ? '(FORCE_SEED)' : '(új adatkönyvtár)',
+    );
   }
 
   if (fs.existsSync(seedUploadsDir)) {
     copyDirContents(seedUploadsDir, UPLOADS_DIR, { overwrite: force });
-    console.log('[IFIge] Seed média ellenőrizve →', UPLOADS_DIR);
   }
 }
 
 bootstrapFromSeed();
+
+if (IS_PRODUCTION && !isPersistentStorage()) {
+  console.error(
+    '[IFIge] FIGYELEM: nincs perzisztens tárhely (Volume). ' +
+      'A sorozatok és feltöltések ELVESZNEK minden Railway redeploy-nál. ' +
+      'Állíts be Volume mount /data + DATA_DIR=/data/data + UPLOADS_DIR=/data/uploads',
+  );
+}
 
 const storage = multer.diskStorage({
   destination: UPLOADS_DIR,
@@ -181,10 +182,11 @@ function emptyRecap() {
 }
 
 function resolveHeroImage(series, preferredDay = 1) {
+  if (series.coverImage?.trim()) return series.coverImage;
   const preferred = series.episodes.find((ep) => ep.day === preferredDay);
   if (preferred?.image) return preferred.image;
-  if (series.episodes[0]?.image) return series.episodes[0].image;
-  return series.coverImage || '';
+  const firstWithImage = series.episodes.find((ep) => ep.image);
+  return firstWithImage?.image || '';
 }
 
 const videoUpload = multer({
@@ -335,13 +337,25 @@ app.get('/api/health', (_req, res) => {
   } catch {
     seriesCount = -1;
   }
+  const persistent = isPersistentStorage();
   res.json({
     ok: true,
     dataDir: DATA_DIR,
     uploadsDir: UPLOADS_DIR,
     seriesCount,
-    persistent: DATA_DIR.startsWith('/data'),
+    persistent,
+    storageWarning: persistent
+      ? null
+      : 'Az adatok nem maradnak meg redeploy után. Railway Volume szükséges (/data).',
   });
+});
+
+app.get('/api/admin/backup', (_req, res) => {
+  const data = readData();
+  const stamp = new Date().toISOString().slice(0, 10);
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Content-Disposition', `attachment; filename="ifige-backup-${stamp}.json"`);
+  res.send(JSON.stringify(data, null, 2));
 });
 
 app.get('/api/admin/config', (_req, res) => {

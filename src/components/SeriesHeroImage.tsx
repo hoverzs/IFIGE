@@ -10,7 +10,7 @@ interface Props {
 
 /** Főoldal hero: epizód/sorozat kép — LiveImage */
 export default function SeriesHeroImage({ series, imageSrc, className = '' }: Props) {
-  const src = imageSrc || series.episodes[0]?.image || series.heroImage || series.coverImage;
+  const src = imageSrc || series.coverImage || series.heroImage || series.episodes[0]?.image;
 
   if (!src) {
     return (
