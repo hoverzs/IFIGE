@@ -58,7 +58,7 @@ export default function EpisodePage() {
   const nextDay = nextEp && nextEp.status !== 'locked' ? dayNum + 1 : null;
 
   return (
-    <div className="min-h-dvh bg-bg pb-10">
+    <div className="min-h-dvh bg-bg pb-10 overflow-x-hidden">
       <div className="sticky top-0 z-40 bg-bg/80 backdrop-blur border-b border-border px-5 py-3 flex items-center gap-3">
         <Link to="/" className="text-text-muted hover:text-text">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
@@ -69,14 +69,14 @@ export default function EpisodePage() {
         </div>
       </div>
 
-      <div className="relative w-full aspect-[4/5] sm:aspect-[16/10] max-h-[65dvh] bg-black overflow-hidden isolate">
+      <div className="episode-hero relative w-full aspect-[4/5] sm:aspect-[16/10] max-h-[65dvh] bg-black">
         <EpisodeMedia
           episode={episode}
-          variant="slowPush"
-          containerClassName="absolute inset-0 overflow-hidden"
-          className="h-full w-full object-cover object-center"
+          variant="static"
+          containerClassName="episode-hero__media"
+          className="episode-hero__img"
         />
-        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-bg via-bg/80 to-transparent pointer-events-none z-10" />
+        <div className="episode-hero__fade" aria-hidden />
       </div>
 
       <article className="px-5 py-8 max-w-[680px] mx-auto space-y-8 animate-fade-in-up">

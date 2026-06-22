@@ -348,3 +348,56 @@ select.input {
     opacity: 0.15;
   }
 }
+
+/* Epizódoldal hero — szigorú vágás, nincs kilógás / szürke háttér */
+.episode-hero {
+  overflow: hidden;
+  isolation: isolate;
+  contain: paint;
+  max-width: 100%;
+}
+
+.episode-hero__media {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  background: #000;
+}
+
+.episode-hero__media.live-image,
+.episode-hero__media .live-image {
+  background: #000;
+}
+
+.episode-hero__img,
+.episode-hero__media .live-image__img {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-width: 100%;
+  min-height: 100%;
+  object-fit: cover;
+  /* Felfelé tolja a vágást — eltakarja a képfájl tetején lévő üres/csíkos részt */
+  object-position: center 42%;
+  transform: scale(1.14);
+  transform-origin: center center;
+  animation: none !important;
+  will-change: auto;
+}
+
+.episode-hero__media .live-image__atmosphere {
+  display: none;
+}
+
+.episode-hero__fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 7rem;
+  background: linear-gradient(to top, var(--color-bg) 0%, color-mix(in srgb, var(--color-bg) 85%, transparent) 45%, transparent 100%);
+  pointer-events: none;
+  z-index: 2;
+}
