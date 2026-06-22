@@ -7,7 +7,7 @@ import BottomNav from '../components/BottomNav';
 import EpisodeStripCard from '../components/EpisodeStripCard';
 import WeeklyFinaleSection from '../components/WeeklyFinaleSection';
 import SeriesHeroImage from '../components/SeriesHeroImage';
-import { SeriesCard } from '../components/EpisodeCard';
+import PreviousSeriesRow from '../components/PreviousSeriesRow';
 
 function getFeaturedEpisode(series: Series) {
   return (
@@ -22,24 +22,6 @@ function getEpisodeProgress(series: Series) {
   return Math.round((unlocked / 7) * 100);
 }
 
-function ArchivedSection({ seriesList }: { seriesList: Series[] }) {
-  if (!seriesList.length) return null;
-  return (
-    <section className="mt-12 sm:mt-14">
-      <div className="px-5 mb-3">
-        <h2 className="text-base font-bold">Korábbi sorozatok</h2>
-        <p className="text-xs text-text-muted">Bármikor visszanézheted a lezárt heteket</p>
-      </div>
-      <div className="flex gap-3 overflow-x-auto scrollbar-hide px-5 pb-2 snap-x">
-        {seriesList.map((s) => (
-          <div key={s.id} className="snap-start">
-            <SeriesCard series={s} />
-          </div>
-        ))}
-      </div>
-    </section>
-  );
-}
 
 export default function HomePage() {
   const [home, setHome] = useState<HomeResponse | null>(null);
@@ -68,7 +50,7 @@ export default function HomePage() {
             {home?.message || EMPTY_SERIES_MESSAGE}
           </p>
         </div>
-        <ArchivedSection seriesList={archived} />
+        <PreviousSeriesRow seriesList={archived} />
         <BottomNav />
       </div>
     );
@@ -184,7 +166,7 @@ export default function HomePage() {
 
       {!isUpcoming && <WeeklyFinaleSection series={series} />}
 
-      <ArchivedSection seriesList={archived} />
+      <PreviousSeriesRow seriesList={archived} />
 
       <BottomNav />
     </div>
