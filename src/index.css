@@ -349,12 +349,15 @@ select.input {
   }
 }
 
-/* Epizódoldal hero — szigorú vágás, nincs kilógás / szürke háttér */
+/* Epizódoldal hero — teljes kép látható, fekete letterbox ha kell */
 .episode-hero {
   overflow: hidden;
   isolation: isolate;
   contain: paint;
   max-width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .episode-hero__media {
@@ -362,6 +365,9 @@ select.input {
   inset: 0;
   overflow: hidden;
   background: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .episode-hero__media.live-image,
@@ -371,18 +377,15 @@ select.input {
 
 .episode-hero__img,
 .episode-hero__media .live-image__img {
-  position: absolute;
-  inset: 0;
+  position: relative;
   display: block;
   width: 100%;
   height: 100%;
-  min-width: 100%;
-  min-height: 100%;
-  object-fit: cover;
-  /* Felfelé tolja a vágást — eltakarja a képfájl tetején lévő üres/csíkos részt */
-  object-position: center 42%;
-  transform: scale(1.14);
-  transform-origin: center center;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  object-position: center center;
+  transform: none;
   animation: none !important;
   will-change: auto;
 }

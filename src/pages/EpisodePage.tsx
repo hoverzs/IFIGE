@@ -69,7 +69,7 @@ export default function EpisodePage() {
         </div>
       </div>
 
-      <div className="episode-hero relative w-full aspect-[4/5] sm:aspect-[16/10] max-h-[65dvh] bg-black">
+      <div className="episode-hero relative w-full aspect-video sm:aspect-[2/1] max-h-[72dvh] bg-black">
         <EpisodeMedia
           episode={episode}
           variant="static"
