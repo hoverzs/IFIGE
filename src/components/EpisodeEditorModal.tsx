@@ -108,7 +108,7 @@ export default function EpisodeEditorModal({ seriesId, episode, onClose, onSaved
     <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
-      <div className="relative w-full sm:max-w-lg max-h-[92dvh] bg-bg-card rounded-t-2xl sm:rounded-2xl border border-border overflow-hidden flex flex-col animate-fade-in-up">
+      <div className="relative w-full sm:max-w-xl max-h-[95dvh] bg-bg-card rounded-t-2xl sm:rounded-2xl border border-border overflow-hidden flex flex-col animate-fade-in-up">
         <div className="flex items-center justify-between px-5 py-4 border-b border-border flex-shrink-0">
           <div>
             <h2 className="font-bold">{episode.day}. epizód</h2>
@@ -129,14 +129,19 @@ export default function EpisodeEditorModal({ seriesId, episode, onClose, onSaved
               <input className="input" value={scripture} onChange={(e) => setScripture(e.target.value)} placeholder="pl. Lk 22:33" />
             </Field>
             <Field label="Gondolat">
-              <textarea className="input resize-none" rows={3} value={thought} onChange={(e) => setThought(e.target.value)} />
+              <textarea
+                className="input resize-y min-h-[11rem] sm:min-h-[13rem]"
+                rows={8}
+                value={thought}
+                onChange={(e) => setThought(e.target.value)}
+              />
               <CharCount value={thought} />
             </Field>
             <Field label="Kérdés">
-              <textarea className="input resize-none" rows={2} value={question} onChange={(e) => setQuestion(e.target.value)} />
+              <textarea className="input resize-none" rows={3} value={question} onChange={(e) => setQuestion(e.target.value)} />
             </Field>
             <Field label="Ima">
-              <textarea className="input resize-none" rows={2} value={prayer} onChange={(e) => setPrayer(e.target.value)} />
+              <textarea className="input resize-y min-h-[6rem]" rows={4} value={prayer} onChange={(e) => setPrayer(e.target.value)} />
               <CharCount value={prayer} />
             </Field>
             <Field label="Holnap (teaser)">
