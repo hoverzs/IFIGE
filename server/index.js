@@ -344,6 +344,9 @@ function loadIndexHtml() {
 function sendSpaIndex(req, res, next) {
   try {
     let html = loadIndexHtml();
+    const baseUrl = getRequestBaseUrl(req);
+    html = injectSiteUrlMeta(html, baseUrl);
+
     const episodeRef = parseEpisodePath(req.path);
     if (episodeRef) {
       const data = readData();
@@ -352,11 +355,12 @@ function sendSpaIndex(req, res, next) {
         migrateSeries(series);
         const episode = series.episodes.find((ep) => ep.day === episodeRef.day);
         if (episode?.title?.trim()) {
-          const meta = buildEpisodeShareMeta(series, episode, getRequestBaseUrl(req));
+          const meta = buildEpisodeShareMeta(series, episode, baseUrl);
           html = injectOgTags(html, meta);
         }
       }
     }
+
     res.setHeader('Content-Type', 'text/html; charset=utf-8');
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.send(html);

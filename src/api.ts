@@ -295,11 +295,22 @@ export function seriesUrl(series: Pick<Series, 'slug' | 'id'>, suffix = ''): str
   return `/series/${seriesSlug(series)}${suffix}`;
 }
 
+function getPublicSiteUrl(): string {
+  if (typeof document !== 'undefined') {
+    const meta = document.querySelector('meta[name="ifige-site-url"]');
+    const fromMeta = meta?.getAttribute('content')?.trim();
+    if (fromMeta) return fromMeta.replace(/\/$/, '');
+  }
+  if (typeof window !== 'undefined') {
+    return window.location.origin;
+  }
+  return '';
+}
+
 export function absoluteEpisodeUrl(series: Pick<Series, 'slug' | 'id'>, day: number): string {
   const path = seriesUrl(series, `/episode/${day}`);
-  if (typeof window !== 'undefined') {
-    return `${window.location.origin}${path}`;
-  }
+  const origin = getPublicSiteUrl();
+  if (origin) return `${origin}${path}`;
   return path;
 }
 

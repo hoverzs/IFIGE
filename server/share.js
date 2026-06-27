@@ -41,6 +41,20 @@ function escapeHtmlAttr(value) {
     .replace(/</g, '&lt;');
 }
 
+function stripSocialMeta(html) {
+  return html
+    .replace(/<meta property="og:[^"]*"[^>]*>\s*/gi, '')
+    .replace(/<meta name="twitter:[^"]*"[^>]*>\s*/gi, '')
+    .replace(/<title>[^<]*<\/title>\s*/i, '')
+    .replace(/<meta name="description"[^>]*>\s*/i, '');
+}
+
+export function injectSiteUrlMeta(html, siteUrl) {
+  const tag = `<meta name="ifige-site-url" content="${escapeHtmlAttr(siteUrl.replace(/\/$/, ''))}" />`;
+  const cleaned = html.replace(/<meta name="ifige-site-url"[^>]*>\s*/i, '');
+  return cleaned.replace('</head>', `    ${tag}\n  </head>`);
+}
+
 export function injectOgTags(html, meta) {
   const e = escapeHtmlAttr;
   const tags = [
@@ -52,6 +66,7 @@ export function injectOgTags(html, meta) {
     `<meta property="og:description" content="${e(meta.description)}" />`,
     `<meta property="og:url" content="${e(meta.url)}" />`,
     `<meta property="og:image" content="${e(meta.image)}" />`,
+    `<meta property="og:image:secure_url" content="${e(meta.image)}" />`,
     '<meta property="og:locale" content="hu_HU" />',
     '<meta name="twitter:card" content="summary_large_image" />',
     `<meta name="twitter:title" content="${e(meta.title)}" />`,
@@ -59,8 +74,7 @@ export function injectOgTags(html, meta) {
     `<meta name="twitter:image" content="${e(meta.image)}" />`,
   ].join('\n    ');
 
-  let out = html.replace(/<title>[^<]*<\/title>\s*/i, '');
-  out = out.replace(/<meta name="description"[^>]*>\s*/i, '');
+  const out = stripSocialMeta(html);
   return out.replace('</head>', `    ${tags}\n  </head>`);
 }
 

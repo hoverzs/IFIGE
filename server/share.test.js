@@ -33,11 +33,13 @@ assert(meta.url === 'https://ifige.textus.ro/series/sorozat/episode/1', 'url');
 assert(meta.image === 'https://ifige.textus.ro/uploads/cover.jpg', 'kép');
 
 const html = injectOgTags(
-  '<html><head><title>IFIge</title><meta name="description" content="x" /></head></html>',
+  '<html><head><title>IFIge</title><meta name="description" content="x" /><meta property="og:title" content="IFIge" /><meta property="og:description" content="generic" /></head></html>',
   meta,
 );
 assert(html.includes('property="og:title"'), 'og:title');
 assert(html.includes('Első bekezdés.'), 'og leírás');
+assert(!html.includes('property="og:title" content="IFIge"'), 'régi og:title eltávolítva');
+assert((html.match(/property="og:title"/g) || []).length === 1, 'egyetlen og:title');
 
 const parsed = parseEpisodePath('/series/a-nem-fogadott-hivas/episode/3');
 assert(parsed?.slug === 'a-nem-fogadott-hivas' && parsed.day === 3, 'útvonal parse');
