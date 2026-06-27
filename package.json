@@ -13,6 +13,7 @@
     "build": "vite build",
     "start": "node server/index.js",
     "test:publish": "node server/publish.test.js",
+    "test:share": "node server/share.test.js",
     "preview": "vite preview"
   },
   "dependencies": {

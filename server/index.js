@@ -17,6 +17,12 @@ import {
   getComputedStatus,
   getAdminComputedStatus,
 } from './publish.js';
+import {
+  buildEpisodeShareMeta,
+  injectOgTags,
+  parseEpisodePath,
+  getRequestBaseUrl,
+} from './share.js';
 import { v4 as uuidv4 } from 'uuid';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -325,6 +331,40 @@ function withUpload(uploadMiddleware) {
   };
 }
 
+let cachedIndexHtml = null;
+
+function loadIndexHtml() {
+  const indexPath = path.join(DIST_DIR, 'index.html');
+  if (!cachedIndexHtml) {
+    cachedIndexHtml = fs.readFileSync(indexPath, 'utf-8');
+  }
+  return cachedIndexHtml;
+}
+
+function sendSpaIndex(req, res, next) {
+  try {
+    let html = loadIndexHtml();
+    const episodeRef = parseEpisodePath(req.path);
+    if (episodeRef) {
+      const data = readData();
+      const series = findSeriesByRef(data, episodeRef.slug);
+      if (series && series.status !== 'draft') {
+        migrateSeries(series);
+        const episode = series.episodes.find((ep) => ep.day === episodeRef.day);
+        if (episode?.title?.trim()) {
+          const meta = buildEpisodeShareMeta(series, episode, getRequestBaseUrl(req));
+          html = injectOgTags(html, meta);
+        }
+      }
+    }
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.send(html);
+  } catch (err) {
+    next(err);
+  }
+}
+
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -605,10 +645,7 @@ if (IS_PRODUCTION) {
       if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
         return next();
       }
-      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
-      res.sendFile(path.join(DIST_DIR, 'index.html'), (err) => {
-        if (err) next(err);
-      });
+      sendSpaIndex(req, res, next);
     });
   } else {
     console.warn('[IFIge] dist/ hiányzik — futtasd: npm run build');
