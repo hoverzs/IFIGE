@@ -592,11 +592,20 @@ app.delete('/api/series/:id', (req, res) => {
 
 if (IS_PRODUCTION) {
   if (fs.existsSync(DIST_DIR)) {
-    app.use(express.static(DIST_DIR));
+    app.use(
+      express.static(DIST_DIR, {
+        setHeaders(res, filePath) {
+          if (filePath.endsWith('index.html')) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          }
+        },
+      }),
+    );
     app.get('*', (req, res, next) => {
       if (req.path.startsWith('/api') || req.path.startsWith('/uploads')) {
         return next();
       }
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.sendFile(path.join(DIST_DIR, 'index.html'), (err) => {
         if (err) next(err);
       });

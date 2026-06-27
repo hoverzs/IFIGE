@@ -5,7 +5,7 @@ import { shareEpisode } from '../api';
 interface Props {
   series: Series;
   episode: Episode;
-  variant?: 'icon' | 'button';
+  variant?: 'icon' | 'compact' | 'button';
   className?: string;
 }
 
@@ -40,6 +40,25 @@ export default function ShareEpisodeButton({ series, episode, variant = 'icon', 
     );
   }
 
+  if (variant === 'compact') {
+    return (
+      <button
+        type="button"
+        onClick={handleShare}
+        className={`flex-shrink-0 inline-flex items-center gap-1.5 rounded-full border border-border bg-bg/80 px-3 py-1.5 text-xs font-semibold text-text hover:border-accent/40 transition-colors ${className}`}
+      >
+        {status === 'copied' ? (
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M20 6L9 17l-5-5" />
+          </svg>
+        ) : (
+          <ShareIcon size={16} />
+        )}
+        {label}
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
@@ -59,9 +78,9 @@ export default function ShareEpisodeButton({ series, episode, variant = 'icon', 
   );
 }
 
-function ShareIcon() {
+function ShareIcon({ size = 18 }: { size?: number }) {
   return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
       <circle cx="18" cy="5" r="3" />
       <circle cx="6" cy="12" r="3" />
       <circle cx="18" cy="19" r="3" />

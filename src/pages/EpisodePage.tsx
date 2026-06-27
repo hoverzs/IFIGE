@@ -4,6 +4,7 @@ import { fetchSeries, getEpisodePublicMessage, seriesUrl } from '../api';
 import type { Episode, Series } from '../api';
 import EpisodeMedia from '../components/EpisodeMedia';
 import ShareEpisodeButton from '../components/ShareEpisodeButton';
+import ShareEpisodeSection from '../components/ShareEpisodeSection';
 
 export default function EpisodePage() {
   const { slug, day } = useParams<{ slug: string; day: string }>();
@@ -68,7 +69,7 @@ export default function EpisodePage() {
           <p className="text-[10px] font-bold uppercase tracking-widest text-accent">{episode.day}. epizód</p>
           <h1 className="font-bold truncate">{episode.title}</h1>
         </div>
-        <ShareEpisodeButton series={series} episode={episode} />
+        <ShareEpisodeButton series={series} episode={episode} variant="compact" />
       </div>
 
       <div className="episode-hero relative w-full aspect-video sm:aspect-[2/1] max-h-[72dvh] bg-black">
@@ -114,6 +115,8 @@ export default function EpisodePage() {
             <p className="text-text-muted italic leading-[1.75] whitespace-pre-wrap">{episode.teaser}</p>
           </section>
         )}
+
+        <ShareEpisodeSection series={series} episode={episode} />
 
         <nav className="flex justify-between pt-6 border-t border-border">
           {prevDay ? <Link to={seriesUrl(series, `/episode/${prevDay}`)} className="text-sm text-text-muted hover:text-accent">← Előző</Link> : <span />}
