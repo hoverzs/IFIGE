@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import { fetchSeries, getEpisodePublicMessage, seriesUrl } from '../api';
 import type { Episode, Series } from '../api';
 import EpisodeMedia from '../components/EpisodeMedia';
+import ShareEpisodeButton from '../components/ShareEpisodeButton';
 
 export default function EpisodePage() {
   const { slug, day } = useParams<{ slug: string; day: string }>();
@@ -63,10 +64,11 @@ export default function EpisodePage() {
         <Link to="/" className="text-text-muted hover:text-text">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
         </Link>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-widest text-accent">{episode.day}. epizód</p>
           <h1 className="font-bold truncate">{episode.title}</h1>
         </div>
+        <ShareEpisodeButton series={series} episode={episode} />
       </div>
 
       <div className="episode-hero relative w-full aspect-video sm:aspect-[2/1] max-h-[72dvh] bg-black">

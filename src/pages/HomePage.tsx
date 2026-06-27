@@ -8,6 +8,7 @@ import EpisodeStripCard from '../components/EpisodeStripCard';
 import WeeklyFinaleSection from '../components/WeeklyFinaleSection';
 import SeriesHeroImage from '../components/SeriesHeroImage';
 import PreviousSeriesRow from '../components/PreviousSeriesRow';
+import ShareEpisodeButton from '../components/ShareEpisodeButton';
 
 function getFeaturedEpisode(series: Series) {
   return (
@@ -117,6 +118,9 @@ export default function HomePage() {
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z" /></svg>
                 {featuredEpisode.status === 'current' ? 'Mai epizód megnyitása' : 'Epizód megnyitása'}
               </Button>
+            )}
+            {!isUpcoming && featuredEpisode && featuredEpisode.status !== 'locked' && (
+              <ShareEpisodeButton series={series} episode={featuredEpisode} variant="button" />
             )}
             {!isUpcoming && (
               <Button to={seriesUrl(series)} variant="ghost" className="w-full sm:w-auto max-w-[280px] mt-3 !text-sm">

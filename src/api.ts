@@ -295,6 +295,78 @@ export function seriesUrl(series: Pick<Series, 'slug' | 'id'>, suffix = ''): str
   return `/series/${seriesSlug(series)}${suffix}`;
 }
 
+export function absoluteEpisodeUrl(series: Pick<Series, 'slug' | 'id'>, day: number): string {
+  const path = seriesUrl(series, `/episode/${day}`);
+  if (typeof window !== 'undefined') {
+    return `${window.location.origin}${path}`;
+  }
+  return path;
+}
+
+export interface EpisodeShareContent {
+  title: string;
+  summary: string;
+  url: string;
+  text: string;
+}
+
+export function getEpisodeShareSummary(episode: Episode, maxLen = 220): string {
+  const teaser = episode.teaser?.trim();
+  if (teaser) return teaser;
+
+  const thought = episode.thought?.trim();
+  if (thought) {
+    const firstBlock = thought.split(/\n\s*\n/)[0].replace(/\s+/g, ' ').trim();
+    if (firstBlock.length <= maxLen) return firstBlock;
+    return `${firstBlock.slice(0, maxLen - 1).trim()}…`;
+  }
+
+  const question = episode.question?.trim();
+  if (question) {
+    if (question.length <= maxLen) return question;
+    return `${question.slice(0, maxLen - 1).trim()}…`;
+  }
+
+  return '';
+}
+
+export function buildEpisodeShareContent(series: Series, episode: Episode): EpisodeShareContent {
+  const title = `${episode.title} — ${series.title} (${episode.day}. nap)`;
+  const summary = getEpisodeShareSummary(episode);
+  const url = absoluteEpisodeUrl(series, episode.day);
+  const text = summary ? `${title}\n\n${summary}\n\n${url}` : `${title}\n\n${url}`;
+  return { title, summary, url, text };
+}
+
+export async function shareEpisode(series: Series, episode: Episode): Promise<'shared' | 'copied'> {
+  const content = buildEpisodeShareContent(series, episode);
+  const shareText = content.summary
+    ? `${content.title}\n\n${content.summary}`
+    : content.title;
+
+  if (typeof navigator !== 'undefined' && navigator.share) {
+    try {
+      await navigator.share({
+        title: content.title,
+        text: shareText,
+        url: content.url,
+      });
+      return 'shared';
+    } catch (err) {
+      if ((err as Error).name === 'AbortError') {
+        throw err;
+      }
+    }
+  }
+
+  if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(content.text);
+    return 'copied';
+  }
+
+  throw new Error('Megosztás nem elérhető ezen az eszközön');
+}
+
 export async function fetchSeries(ref: string): Promise<Series> {
   const res = await fetch(`/api/series/${ref}`);
   if (!res.ok) throw new Error('Sorozat nem található');
