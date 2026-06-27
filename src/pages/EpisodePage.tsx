@@ -62,8 +62,15 @@ export default function EpisodePage() {
   return (
     <div className="min-h-dvh bg-bg pb-10 overflow-x-hidden">
       <div className="sticky top-0 z-40 bg-bg/80 backdrop-blur border-b border-border px-5 py-3 flex items-center gap-3">
-        <Link to="/" className="text-text-muted hover:text-text">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M15 18l-6-6 6-6" /></svg>
+        <Link
+          to="/"
+          className="flex-shrink-0 inline-flex items-center gap-1.5 rounded-full border border-border bg-bg/80 px-3 py-1.5 text-xs font-semibold text-text hover:border-accent/40 transition-colors"
+          aria-label="Vissza a főoldalra"
+        >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+          Főoldal
         </Link>
         <div className="min-w-0 flex-1">
           <p className="text-[10px] font-bold uppercase tracking-widest text-accent">{episode.day}. epizód</p>
